@@ -180,11 +180,30 @@ function fallbackImage(category) {
   return map[category] || map.roti;
 }
 
+function canonicalCategory(cat){
+  const c = (cat||'').toString().toLowerCase().trim();
+  if(!c) return '';
+  const kopiSyn = ['kopi','coffee','cafe','minuman','drink','beverage','minum'];
+  const rotiSyn = ['roti','bread','makanan','food','bakery','pastry'];
+  if(kopiSyn.includes(c) || c.indexOf('kopi') === 0 || c.includes('minum') || c.includes('coffee') || c.includes('cafe')) return 'kopi';
+  if(rotiSyn.includes(c) || c.indexOf('roti') === 0 || c.includes('makan') || c.includes('bread')) return 'roti';
+  return c;
+}
+
+function normalizeProduct(item){
+  if(!item) return item;
+  const normalized = Object.assign({}, item);
+  try{ normalized.category = canonicalCategory(item.category) || (item.category||'').toString().toLowerCase().trim(); }catch(e){ normalized.category = (item.category||'').toString().toLowerCase().trim(); }
+  return normalized;
+}
+
 async function loadProducts() {
   // Prioritas: adminProducts (localStorage) -> Supabase (jika dikonfigurasi) -> kosong
   const adminProducts = loadAdminProductsFromStorage();
   if (adminProducts && adminProducts.length) {
     products = adminProducts.slice();
+    // normalisasi kategori agar filter publik mengenali variasi (coffee, minuman, dll.)
+    products = products.map(normalizeProduct);
     renderProducts();
     return;
   }
@@ -204,6 +223,8 @@ async function loadProducts() {
       }
 
       products = (data && data.length) ? data : [];
+      // normalisasi kategori dari remote juga (jika ada variasi teks)
+      products = products.map(normalizeProduct);
       renderProducts();
       return;
     } catch (e) {
@@ -220,16 +241,39 @@ async function loadProducts() {
 }
 
 function renderProducts() {
-  const keyword = searchInput.value.trim().toLowerCase();
-  const category = categoryFilter.value;
-  const allowedCategories = selectedBrand === 'coffee' ? ['kopi'] : selectedBrand === 'bakery' ? ['roti'] : null;
+  const keyword = (searchInput.value || '').trim().toLowerCase();
+  const category = (categoryFilter && categoryFilter.value) ? categoryFilter.value : 'all';
+  // normalisasi nilai filter kategori (mis. 'minuman' -> 'kopi')
+  const canonicalFilter = (category === 'all') ? 'all' : canonicalCategory(category);
+
+  function normalizeCat(c){ return (c||'').toString().toLowerCase().trim(); }
+  function categoryMatchesFilter(itemCategory, filter){
+    if(!filter || filter === 'all') return true;
+    const cat = normalizeCat(itemCategory);
+    if(!cat) return false;
+    if(filter === 'roti'){
+      return ['roti','makanan','food','bread','bakery'].includes(cat) || cat.indexOf('roti') === 0 || cat.includes('makanan');
+    }
+    if(filter === 'kopi'){
+      return ['kopi','minuman','drink','coffee','cafe'].includes(cat) || cat.indexOf('kopi') === 0 || cat.includes('minuman') || cat.includes('coffee') || cat.includes('cafe');
+    }
+    return cat === normalizeCat(filter);
+  }
+
+  function brandMatches(itemCategory){
+    if(selectedBrand === 'coffee') return categoryMatchesFilter(itemCategory, 'kopi');
+    if(selectedBrand === 'bakery') return categoryMatchesFilter(itemCategory, 'roti');
+    return true;
+  }
 
   const filtered = products.filter((item) => {
     const name = (item.name || "").toLowerCase();
     const description = (item.description || "").toLowerCase();
     const matchKeyword = name.includes(keyword) || description.includes(keyword);
-    const matchCategory = category === "all" || item.category === category;
-    const matchBrand = !allowedCategories || allowedCategories.includes(item.category);
+    const matchCategory = categoryMatchesFilter(item.category, canonicalFilter);
+    // If user explicitly chose a category (not 'all'), respect that choice
+    // and don't further limit results by the selected brand.
+    const matchBrand = (canonicalFilter && canonicalFilter !== 'all') ? true : brandMatches(item.category);
     return matchKeyword && matchCategory && matchBrand;
   });
 
