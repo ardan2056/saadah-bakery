@@ -21,6 +21,20 @@
       </div>
     </header>
 
+    <section id="adminAuthPanel" style="margin:18px 0; padding:16px; border-radius:14px; background:rgba(255,255,255,0.72); border:1px solid rgba(138,83,38,0.08);">
+      <h3 style="margin-top:0;">Login Admin</h3>
+      <p style="margin:0 0 12px; color:var(--muted);">Masuk untuk menyimpan produk ke Supabase supaya tampil di semua device.</p>
+      <div style="display:grid; gap:10px; max-width:420px;">
+        <input id="adminEmail" type="email" placeholder="Email admin" autocomplete="email" />
+        <input id="adminPassword" type="password" placeholder="Password admin" autocomplete="current-password" />
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+          <button id="adminLoginBtn" class="btn primary" type="button">Masuk</button>
+          <button id="adminLogoutBtn" class="btn ghost" type="button" style="display:none;">Keluar</button>
+          <strong id="adminAuthStatus" style="color:var(--muted);"></strong>
+        </div>
+      </div>
+    </section>
+
     <div class="admin-feature-grid" style="margin:18px 0;">
       <div class="admin-feature" data-feature="products" style="background:#fff; border:1px solid rgba(138,83,38,0.08); padding:18px 20px; border-radius:12px; margin-bottom:12px;">
         <strong>1. Produk</strong>

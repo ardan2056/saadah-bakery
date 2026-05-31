@@ -16,12 +16,111 @@ const pPreviewImg = document.getElementById('pPreview');
 const previewBox = document.querySelector('.preview-box');
 const adminList = document.getElementById('adminList');
 const clearBtn = document.getElementById('clearAdminData');
+const adminAuthPanel = document.getElementById('adminAuthPanel');
+const adminEmail = document.getElementById('adminEmail');
+const adminPassword = document.getElementById('adminPassword');
+const adminLoginBtn = document.getElementById('adminLoginBtn');
+const adminLogoutBtn = document.getElementById('adminLogoutBtn');
+const adminAuthStatus = document.getElementById('adminAuthStatus');
 
 const channel = ('BroadcastChannel' in window) ? new BroadcastChannel('saadah-updates') : null;
 // Do NOT auto-open Produk. Hide all admin sections and show a prompt; clicking a feature box will open it.
 document.querySelectorAll('.admin-section').forEach(el=> el.style.display = 'none');
 const prodSection = document.getElementById('tab-products');
 if(prodSection) prodSection.style.display = 'none';
+const featureGrid = document.querySelector('.admin-feature-grid');
+
+let isAdminAuthenticated = false;
+let currentAdminUser = null;
+
+function setAuthUI(loggedIn, email = ''){
+  isAdminAuthenticated = loggedIn;
+  if(adminAuthStatus) adminAuthStatus.textContent = loggedIn ? `Masuk sebagai ${email || 'admin'}` : 'Belum login';
+  if(adminLoginBtn) adminLoginBtn.style.display = loggedIn ? 'none' : 'inline-flex';
+  if(adminLogoutBtn) adminLogoutBtn.style.display = loggedIn ? 'inline-flex' : 'none';
+  if(adminEmail) adminEmail.disabled = loggedIn;
+  if(adminPassword) adminPassword.disabled = loggedIn;
+  if(featureGrid) featureGrid.style.display = loggedIn ? '' : 'none';
+  document.querySelectorAll('.admin-section').forEach(el=> el.style.display = 'none');
+  if(prodSection) prodSection.style.display = 'none';
+  if(!loggedIn){
+    const pr = document.getElementById('adminChoosePrompt');
+    if(pr) pr.innerHTML = '<strong>Login dulu supaya produk tersimpan ke Supabase.</strong>';
+  }
+}
+
+async function getRemoteAdminProducts(){
+  if(!supabase || !isAdminAuthenticated) return [];
+  const { data, error } = await supabase.from('products').select('*').order('created_at', { ascending: false });
+  if(error){ console.warn('Supabase load products error', error); return []; }
+  return Array.isArray(data) ? data : [];
+}
+
+async function syncRemoteProductsToLocal(){
+  const remote = await getRemoteAdminProducts();
+  if(remote.length){
+    saveAdminProducts(remote.map(item => ({
+      id: item.id,
+      name: item.name,
+      description: item.description || '',
+      category: item.category || 'roti',
+      price: Number(item.price) || 0,
+      image_url: item.image_url || ''
+    })));
+    renderList();
+  }
+}
+
+async function refreshAuthState(){
+  if(!supabase){
+    setAuthUI(false);
+    return;
+  }
+  const { data } = await supabase.auth.getSession();
+  const session = data?.session || null;
+  currentAdminUser = session?.user || null;
+  const email = currentAdminUser?.email || '';
+  setAuthUI(!!session, email);
+  if(session){
+    await syncRemoteProductsToLocal();
+    renderList();
+  } else {
+    renderList();
+  }
+}
+
+adminLoginBtn?.addEventListener('click', async ()=>{
+  if(!supabase) return alert('Supabase belum dikonfigurasi.');
+  const email = adminEmail?.value.trim();
+  const password = adminPassword?.value || '';
+  if(!email || !password) return alert('Isi email dan password admin.');
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if(error){
+    alert(error.message || 'Login gagal.');
+    return;
+  }
+  currentAdminUser = data?.user || null;
+  setAuthUI(true, currentAdminUser?.email || email);
+  await syncRemoteProductsToLocal();
+  renderList();
+});
+
+adminLogoutBtn?.addEventListener('click', async ()=>{
+  if(supabase) await supabase.auth.signOut();
+  currentAdminUser = null;
+  setAuthUI(false);
+  renderList();
+});
+
+if(supabase){
+  supabase.auth.onAuthStateChange((_event, session)=>{
+    currentAdminUser = session?.user || null;
+    setAuthUI(!!session, currentAdminUser?.email || '');
+    if(session){
+      syncRemoteProductsToLocal().catch(()=>{});
+    }
+  });
+}
 
 // Insert choose-menu prompt under the feature grid if not exists
 let prompt = document.getElementById('adminChoosePrompt');
@@ -67,8 +166,8 @@ function saveAdminProducts(list){
   try{ localStorage.setItem('adminProducts:lastUpdate', Date.now().toString()); }catch(e){}
 }
 
-function renderList(){
-  const items = loadAdminProducts();
+async function renderList(){
+  const items = isAdminAuthenticated ? await getRemoteAdminProducts() : loadAdminProducts();
   if(!adminList) return;
   if(items.length === 0){ adminList.innerHTML = '<p class="note">Belum ada produk admin.</p>'; return; }
   adminList.innerHTML = items.map((it, idx)=>`
@@ -250,6 +349,35 @@ async function uploadToSupabase(file){
   }catch(err){ console.error(err); return null; }
 }
 
+async function syncProductToRemote(item, previousId = null){
+  if(!supabase || !isAdminAuthenticated) return null;
+  const payload = {
+    name: item.name,
+    description: item.description || null,
+    category: item.category || null,
+    price: item.price || 0,
+    image_url: item.image_url || null,
+    is_active: true
+  };
+
+  if(previousId && !String(previousId).startsWith('a_')){
+    const { data, error } = await supabase.from('products').update(payload).eq('id', previousId).select();
+    if(error){ console.warn('Supabase update product error', error); return null; }
+    return data?.[0] || null;
+  }
+
+  const { data, error } = await supabase.from('products').insert([payload]).select();
+  if(error){ console.warn('Supabase insert product error', error); return null; }
+  return data?.[0] || null;
+}
+
+async function deleteRemoteProduct(productId){
+  if(!supabase || !isAdminAuthenticated) return;
+  if(!productId || String(productId).startsWith('a_')) return;
+  const { error } = await supabase.from('products').delete().eq('id', productId);
+  if(error) console.warn('Supabase delete product error', error);
+}
+
 let editingIndex = -1;
 
 form.addEventListener('submit', async (e)=>{
@@ -290,31 +418,31 @@ form.addEventListener('submit', async (e)=>{
   }
 
   saveAdminProducts(products);
-  renderList();
+  await renderList();
   form.reset();
   if(previewBox) previewBox.style.display = 'none';
-  alert('Produk berhasil disimpan.');
+  if(!supabase || !isAdminAuthenticated){
+    alert('Produk tersimpan di browser saja. Login admin Supabase agar tampil di semua device.');
+    return;
+  }
 
-  // If Supabase configured, try to insert product record to DB table 'products'
-  if(supabaseConfigured){
-    try{
-      const payload = {
-        name: item.name,
-        description: item.description || null,
-        category: item.category || null,
-        price: item.price || 0,
-        image_url: item.image_url || null,
-        is_active: true
-      };
-      const { data: dbRes, error: dbErr } = await supabase.from('products').insert([payload]).select();
-      if(dbErr){ console.warn('Supabase insert product error', dbErr); }
-      else if(dbRes && dbRes[0] && dbRes[0].id){
-        // update local stored product id to supabase id for clarity
-        const arr = loadAdminProducts();
-        const local = arr.findIndex(p => p.id === item.id);
-        if(local >= 0) { arr[local].id = String(dbRes[0].id); saveAdminProducts(arr); renderList(); }
+  try{
+    const remote = await syncProductToRemote(item, item.id && !String(item.id).startsWith('a_') ? item.id : null);
+    if(remote?.id){
+      const arr = loadAdminProducts();
+      const local = arr.findIndex(p => p.id === item.id);
+      if(local >= 0) {
+        arr[local].id = String(remote.id);
+        saveAdminProducts(arr);
+        await renderList();
       }
-    }catch(e){ console.error('supabase insert error', e); }
+      alert('Produk berhasil disimpan dan disinkronkan ke Supabase.');
+    } else {
+      alert('Produk berhasil disimpan, tetapi sinkronisasi database belum berhasil.');
+    }
+  }catch(e){
+    console.error('supabase insert/update error', e);
+    alert('Produk tersimpan lokal, tapi database belum tersinkron.');
   }
 });
 
@@ -339,9 +467,11 @@ adminList.addEventListener('click', (e)=>{
   if(del){
     const idx = Number(del.dataset.delete);
     const arr = loadAdminProducts();
+    const removed = arr[idx];
     arr.splice(idx,1);
     saveAdminProducts(arr);
     renderList();
+    deleteRemoteProduct(removed?.id).catch(()=>{});
     return;
   }
 
@@ -374,6 +504,7 @@ clearBtn.addEventListener('click', ()=>{
 window.addEventListener('storage', (e)=>{ if(e.key && e.key.startsWith('adminProducts')) renderList(); });
 
 renderList();
+refreshAuthState();
 
 // Try local server upload if Supabase not configured
 async function uploadToLocalServer(blobFile){
