@@ -1,0 +1,10 @@
+[build]
+  command = "node build-config.js"
+  publish = "."
+
+[context.production.environment]
+  # example env var names (set these in Netlify UI or GitHub Actions secrets)
+  SUPABASE_URL = "${SUPABASE_URL}"
+  SUPABASE_ANON_KEY = "${SUPABASE_ANON_KEY}"
+  STORE_PHONE = "${STORE_PHONE}"
+  STORAGE_BUCKET = "products"

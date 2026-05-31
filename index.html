@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sa'adah Bakery & Cafe</title>
+  <meta name="description" content="Sa'adah — produk fresh setiap hari dan layanan pre-order dari Bakery & Cafe." />
+  <meta name="theme-color" content="#8a5326" />
+  <meta property="og:title" content="Sa'adah Bakery & Cafe" />
+  <meta property="og:description" content="Sa'adah — produk fresh setiap hari dari Bakery & Cafe." />
+  <meta property="og:type" content="website" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css?v=2" />
+</head>
+<body>
+  <div class="topbar">
+    <p>Pre-order dibuka setiap hari untuk acara, kantor, dan konsumsi.</p>
+    <a href="#kontak">Minta penawaran</a>
+  </div>
+
+  <header class="navbar">
+    <button class="brand brand-button" id="adminSecretTrigger" type="button" aria-label="Login admin rahasia">
+      <span class="brand-mark" id="brandMark" aria-hidden="true"><img id="brandMarkImage" alt="" /></span>
+      <div>
+        <h1>Sa'adah Bakery & Cafe</h1>
+        <p>Fresh setiap hari</p>
+      </div>
+    </button>
+    <nav>
+      <a class="nav-tab-button" id="homeTabTrigger" href="#homeView">Beranda</a>
+      <a class="nav-tab-button" id="menuTabTrigger" href="#menuView">Menu</a>
+      <a class="nav-tab-button" id="aboutTabTrigger" href="#aboutView">Tentang</a>
+      <a class="nav-tab-button" id="contactTabTrigger" href="#contactView">Hubungi Kami</a>
+    </nav>
+  </header>
+
+  <div class="page-slider" id="pageSlider">
+  <main class="page-view home-view" id="homeView" aria-label="Tab beranda">
+    <section class="hero hero-landing" id="beranda" data-hero-image="assets/hero.jpg">
+      <div class="hero-content container">
+        <span class="eyebrow">Produk fresh, layanan cepat</span>
+        <h2>Sa'adah Bakery & Cafe</h2>
+        <p>
+          Sa'adah menghadirkan produk segar setiap hari
+          dengan kualitas dan layanan yang rapi.
+        </p>
+        <div class="hero-actions">
+          <a class="btn primary" id="heroMenuTrigger" href="#menuView">Lihat Menu</a>
+          <a class="btn secondary" id="heroContactTrigger" href="#contactView">Hubungi Kami</a>
+        </div>
+        <div class="hero-pills" aria-label="Keunggulan utama">
+          <span>Produksi harian</span>
+          <span>Pre-order cepat</span>
+          <span>Respons WhatsApp</span>
+        </div>
+      </div>
+      <div class="hero-annotation" aria-hidden="true">Since 1998</div>
+    </section>
+
+    <section class="trust-band" aria-label="Kepercayaan pelanggan">
+      <article>
+        <strong>Fresh harian</strong>
+        <span>Menu diproduksi dalam batch kecil agar kualitas tetap terjaga.</span>
+      </article>
+      <article>
+        <strong>Pengemasan rapi</strong>
+        <span>Cocok untuk hadiah, acara keluarga, dan kebutuhan kantor.</span>
+      </article>
+      <article>
+        <strong>Pelayanan cepat</strong>
+        <span>Pesanan dikirim langsung ke WhatsApp untuk proses yang singkat.</span>
+      </article>
+    </section>
+
+    <section class="stats">
+      <article>
+        <strong>100%</strong>
+        <span>Fresh harian</span>
+      </article>
+      <article>
+        <strong>4.9/5</strong>
+        <span>Rata-rata kepuasan</span>
+      </article>
+      <article>
+        <strong>07.00 - 21.00</strong>
+        <span>Jam operasional</span>
+      </article>
+    </section>
+
+  </main>
+
+  <section class="page-view menu-view" id="menuView" aria-label="Tab menu" aria-hidden="true">
+    <div class="menu-page-shell">
+      <div class="menu-panel-head menu-page-head">
+        <div>
+          <h3 id="menuPanelTitle">Katalog Sa'adah Bakery</h3>
+          <p>Menu dipisah jadi tab sendiri supaya kamu langsung fokus pilih produk tanpa scroll.</p>
+        </div>
+        <!-- back button removed per request -->
+      </div>
+      <div class="menu-brand-switch">
+        <span class="brand-indicator" aria-hidden="true"></span>
+        <button class="brand-btn is-active" id="brandBakery" data-brand="bakery">Roti</button>
+        <button class="brand-btn" id="brandCoffee" data-brand="coffee">Minuman</button>
+      </div>
+      <!-- Top product gallery placeholder: images can be added later via admin or console -->
+      <div id="topProductGallery" class="top-product-gallery" aria-label="Galeri Foto Produk">
+        
+        <div class="top-product-inner empty">Galeri produk kosong. Upload foto melalui admin nanti.</div>
+      </div>
+      </div>
+
+      <div class="filter-bar">
+        <input id="searchInput" type="search" placeholder="Cari produk..." />
+        <select id="categoryFilter">
+          <option value="roti">Roti</option>
+          <option value="kopi">Kopi</option>
+        </select>
+      </div>
+
+      <div class="menu-panel-body">
+        <div id="menuGrid" class="menu-grid" aria-live="polite"></div>
+        <section class="cart-section menu-cart">
+          <div class="section-head compact">
+            <div>
+              <span class="eyebrow">Keranjang Pesanan</span>
+              <h3>Ringkasan pesanan sebelum dikirim ke WhatsApp.</h3>
+            </div>
+          </div>
+          <div id="cartItems" class="cart-items"></div>
+          <div class="cart-footer">
+            <strong>Total: <span id="totalPrice">Rp0</span></strong>
+            <button id="orderBtn" class="btn primary">Pesan via WhatsApp</button>
+          </div>
+        </section>
+      </div>
+    </div>
+  </section>
+
+  <section class="page-view about-view" id="aboutView" aria-label="Tab tentang" aria-hidden="true">
+    <div class="menu-page-shell">
+      <div class="menu-panel-head menu-page-head">
+        <div>
+          <span class="eyebrow">Tentang Sa'adah</span>
+          <h3>Kami menyajikan roti dan minuman dengan standar yang rapi, hangat, dan konsisten.</h3>
+          <p>Bagian ini dibuat lebih modern, lebih bersih, dan menyatu dengan gaya visual menu agar terasa seperti web premium.</p>
+        </div>
+      </div>
+
+      <section class="section about static-section about-premium">
+        <div class="about-showcase">
+          <div class="about-hero-split">
+            <div class="about-hero-visual" aria-hidden="true">
+              <div class="hero-visual-main">
+                <div class="hero-visual-ribbon">Since 1998</div>
+                <div class="hero-visual-corner hero-visual-corner-top"></div>
+                <div class="hero-visual-corner hero-visual-corner-bottom"></div>
+                <div class="hero-visual-photo">S</div>
+                <div class="hero-visual-caption">
+                  <span>Kisah roti rumahan yang tumbuh menjadi brand lokal yang rapi dan hangat.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        <div class="about-grid">
+          <aside class="founder-card">
+            <div class="founder-photo" aria-hidden="true">S</div>
+            <div class="founder-copy">
+              <h4>Ibu Saadah</h4>
+              <p class="founder-meta">Pendiri · Didirikan 21 Sep 1998</p>
+              <h4 class="section-title">Sejarah Singkat</h4>
+              <p class="founder-blurb">Sa'adah dimulai ketika Ibu Saadah belajar membuat roti dari tetangga yang membantu dengan peralatan dan bimbingan. Dari dapur sederhana, usaha ini tumbuh lewat ketekunan, rasa yang konsisten, dan kepercayaan pelanggan yang terus bertambah.</p>
+              <div class="founder-actions">
+                <a class="btn primary" href="#contactView">Pesan Sekarang</a>
+              </div>
+            </div>
+          </aside>
+
+          <div class="about-content">
+            <div class="about-stats">
+              <div class="stat-card">
+                <strong>+25 Tahun</strong>
+                <small>Pengalaman membuat roti</small>
+              </div>
+              <div class="stat-card">
+                <strong>1000+</strong>
+                <small>Pesanan bulanan rata-rata</small>
+              </div>
+              <div class="stat-card">
+                <strong>4.8/5</strong>
+                <small>Rating kepuasan pelanggan</small>
+              </div>
+            </div>
+            <div class="testimonial">
+              <blockquote>"Roti Sa'adah selalu hadir hangat dan enak — cocok untuk acara keluarga kami. Selalu dapat diandalkan."</blockquote>
+              <cite>— Rina, Pelanggan Setia</cite>
+            </div>
+            <div class="leave-review" style="margin-top:16px;">
+              <h4>Tinggalkan Ulasan</h4>
+              <textarea id="reviewText" placeholder="Tulis ulasan singkat Anda di sini" style="width:100%;min-height:80px;padding:12px;border-radius:8px;border:1px solid rgba(138,83,38,0.06);"></textarea>
+              <div style="margin-top:8px;display:flex;gap:8px;">
+                <input id="reviewerName" placeholder="Nama (opsional)" style="padding:10px;border-radius:8px;border:1px solid rgba(138,83,38,0.06);flex:1;" />
+                <button id="submitReview" class="btn">Kirim Ulasan</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- Horizontal timeline across full width -->
+      <section class="section timeline-horizontal-section timeline-emphasis">
+        <div class="section-head compact timeline-head">
+          <div>
+            <span class="eyebrow">Garis Waktu</span>
+            <h3>Perjalanan Sa'adah dalam sorotan waktu</h3>
+            <p>Rangkuman momen penting yang membentuk Sa'adah dari usaha rumahan menjadi brand lokal yang konsisten.</p>
+          </div>
+        </div>
+        <div class="timeline-horizontal" aria-label="Garis waktu Sa'adah Bakery">
+          <div class="timeline-card is-start">
+            <div class="timeline-icon" aria-hidden="true">✦</div>
+            <div class="timeline-kicker">Awal</div>
+            <div class="timeline-year">1998</div>
+            <div class="timeline-content"><strong>Pendirian</strong><p>Mulai usaha roti rumahan setelah mendapat pelatihan dan dukungan peralatan.</p></div>
+          </div>
+          <div class="timeline-card">
+            <div class="timeline-icon" aria-hidden="true">↗</div>
+            <div class="timeline-kicker">Tumbuh</div>
+            <div class="timeline-year">2005</div>
+            <div class="timeline-content"><strong>Perkembangan Lokal</strong><p>Pesanan bertambah dari tetangga ke komunitas sekitar.</p></div>
+          </div>
+          <div class="timeline-card">
+            <div class="timeline-icon" aria-hidden="true">▣</div>
+            <div class="timeline-kicker">Rapi</div>
+            <div class="timeline-year">2015</div>
+            <div class="timeline-content"><strong>Pelayanan Terstruktur</strong><p>Mengatur pre-order dan pengemasan yang lebih rapi untuk acara kecil.</p></div>
+          </div>
+          <div class="timeline-card is-current">
+            <div class="timeline-icon" aria-hidden="true">●</div>
+            <div class="timeline-kicker">Kini</div>
+            <div class="timeline-year">Sekarang</div>
+            <div class="timeline-content"><strong>Operasional Saat Ini</strong><p>Melayani pelanggan lokal dengan produk fresh setiap hari.</p></div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <section class="page-view contact-view" id="contactView" aria-label="Tab kontak" aria-hidden="true">
+    <div class="menu-page-shell">
+      <div class="menu-panel-head menu-page-head">
+        <div>
+          <span class="eyebrow">Kontak Kami</span>
+          <h3>Hubungi kami untuk pesanan harian maupun pre-order.</h3>
+          <p>Langsung ke inti kontak tanpa harus cari ke bawah.</p>
+        </div>
+        <!-- back button removed per request -->
+      </div>
+
+      <section class="section contact static-section">
+        <div class="contact-grid">
+          <article>
+            <strong>Alamat</strong>
+              <p>Jl. Subulussalam, Batu Ampar, Kec. Balikpapan Utara, Kota Balikpapan, Kalimantan Timur 76136</p>
+          </article>
+          <article>
+            <strong>WhatsApp</strong>
+            <p>08125544777</p>
+          </article>
+          <article>
+            <strong>Instagram</strong>
+            <p><a href="https://www.instagram.com/saadahbakery_" target="_blank" rel="noreferrer">@saadahbakery_</a></p>
+            <p><a href="https://www.instagram.com/cs.caffeesaadah" target="_blank" rel="noreferrer">@cs.caffeesaadah</a></p>
+          </article>
+          <article>
+            <strong>Jam Operasional</strong>
+            <p>07.00 - 21.00 WITA</p>
+          </article>
+        </div>
+        <div class="contact-cta">
+          <a class="btn primary" id="contactMenuTrigger" href="#menuView">Pesan Sekarang</a>
+          <a class="btn secondary" href="https://wa.me/628125544777" target="_blank" rel="noreferrer">Chat WhatsApp</a>
+        </div>
+        <div class="contact-socials" aria-label="Akun Instagram">
+          <a class="btn secondary" href="https://www.instagram.com/saadahbakery_" target="_blank" rel="noreferrer">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" stroke-width="1.5"/><path d="M16.5 7.5a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5z" fill="currentColor"/><path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z" stroke="currentColor" stroke-width="1.2"/></svg>
+            Instagram Sa'adah Bakery
+          </a>
+          <a class="btn secondary" href="https://www.instagram.com/cs.caffeesaadah" target="_blank" rel="noreferrer">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" stroke-width="1.5"/><path d="M16.5 7.5a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5z" fill="currentColor"/><path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z" stroke="currentColor" stroke-width="1.2"/></svg>
+            Instagram CS Cafe Sa'adah
+          </a>
+        </div>
+        <div class="contact-map">
+          <div class="map-wrapper">
+            <iframe
+              title="Peta Sa'adah Bakery - Balikpapan"
+              src="https://maps.google.com/maps?q=Jl.+Subulussalam,+Batu+Ampar,+Kec.+Balikpapan+Utara,+Kota+Balikpapan,+Kalimantan+Timur+76136&z=17&output=embed"
+              loading="lazy"
+              allowfullscreen
+              referrerpolicy="no-referrer"></iframe>
+          </div>
+          <div class="map-actions">
+            <a class="btn primary" href="https://www.google.com/maps/search/?api=1&query=Jl.+Subulussalam,+Batu+Ampar,+Kec.+Balikpapan+Utara,+Kota+Balikpapan,+Kalimantan+Timur+76136" target="_blank" rel="noreferrer">Buka di Google Maps</a>
+          </div>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  </div>
+
+  <a class="floating-wa" href="https://wa.me/628125544777" target="_blank" rel="noreferrer">Chat WhatsApp</a>
+
+  <div class="secret-modal hidden" id="secretModal" aria-hidden="true">
+    <div class="secret-modal-card" role="dialog" aria-modal="true" aria-labelledby="secretModalTitle">
+      <button class="secret-modal-close" id="secretModalClose" type="button" aria-label="Tutup">×</button>
+      <span class="eyebrow">Login Admin</span>
+      <h3 id="secretModalTitle">Masukkan kode rahasia admin</h3>
+      <p>Ketik kode untuk masuk ke dashboard admin.</p>
+      <input id="secretCodeInput" type="password" placeholder="Kode rahasia" autocomplete="off" />
+      <div class="secret-modal-actions">
+        <button class="btn primary" id="secretModalSubmit" type="button">Masuk</button>
+        <button class="btn secondary" id="secretModalCancel" type="button">Batal</button>
+      </div>
+      <p class="secret-modal-error hidden" id="secretModalError">Kode salah.</p>
+    </div>
+  </div>
+
+  <footer>
+    <p>© 2026 Sa'adah Bakery & Cafe. All Rights Reserved.</p>
+  </footer>
+
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Bakery",
+      "name": "Sa'adah Bakery",
+      "description": "Sa'adah — produk fresh setiap hari dan layanan pre-order.",
+      "areaServed": "Balikpapan, Kalimantan Timur",
+      "telephone": "+628125544777",
+      "servesCuisine": ["Produk"],
+      "founder": "Ibu Saadah",
+      "foundingDate": "1998-09-21",
+      "url": "https://example.com",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "Jl. Subulussalam, Batu Ampar",
+        "addressLocality": "Kec. Balikpapan Utara, Kota Balikpapan",
+        "addressRegion": "Kalimantan Timur",
+        "postalCode": "76136",
+        "addressCountry": "ID"
+      }
+    }
+  </script>
+
+  <script type="module" src="script.js?v=6"></script>
+</body>
+</html>

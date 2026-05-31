@@ -1,0 +1,13 @@
+{
+  "name": "saadah-bakery",
+  "version": "1.0.0",
+  "description": "Static website for Sa'adah Bakery with Supabase-backed admin dashboard",
+  "scripts": {
+    "build-config": "node build-config.js",
+    "start": "npx http-server -p 5500 -c-1",
+    "dev": "npx http-server -p 5500 -c-1",
+    "prepare-deploy": "node build-config.js"
+  },
+  "author": "",
+  "license": "MIT"
+}
