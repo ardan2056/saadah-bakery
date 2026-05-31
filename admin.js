@@ -32,6 +32,48 @@ const featureGrid = document.querySelector('.admin-feature-grid');
 
 let isAdminAuthenticated = false;
 let currentAdminUser = null;
+// current filter for admin products view: 'all' | 'roti' | 'kopi'
+let currentCategoryFilter = 'all';
+
+// inject simple filter buttons above adminList if the container exists
+function ensureAdminFilters(){
+  const listEl = adminList;
+  if(!listEl) return;
+  const existing = document.getElementById('adminCategoryFilters');
+  if(existing) return;
+  const wrapper = document.createElement('div');
+  wrapper.id = 'adminCategoryFilters';
+  wrapper.style.display = 'flex';
+  wrapper.style.gap = '8px';
+  wrapper.style.margin = '8px 0';
+  const btnAll = document.createElement('button'); btnAll.textContent = 'Semua'; btnAll.className='btn ghost'; btnAll.dataset.cat='all';
+  const btnRoti = document.createElement('button'); btnRoti.textContent = 'Makanan'; btnRoti.className='btn ghost'; btnRoti.dataset.cat='roti';
+  const btnKopi = document.createElement('button'); btnKopi.textContent = 'Minuman'; btnKopi.className='btn ghost'; btnKopi.dataset.cat='kopi';
+  [btnAll, btnRoti, btnKopi].forEach(b=>{ b.addEventListener('click', ()=>{ currentCategoryFilter = b.dataset.cat; updateFilterUI(); renderList(); }); });
+  wrapper.appendChild(btnAll); wrapper.appendChild(btnRoti); wrapper.appendChild(btnKopi);
+  listEl.parentNode.insertBefore(wrapper, listEl);
+}
+
+function updateFilterUI(){
+  const wrapper = document.getElementById('adminCategoryFilters'); if(!wrapper) return;
+  Array.from(wrapper.querySelectorAll('button')).forEach(b=>{
+    if(b.dataset.cat === currentCategoryFilter){ b.classList.add('is-active'); } else { b.classList.remove('is-active'); }
+  });
+}
+
+// return true if product category string matches the desired filter (supports synonyms)
+function categoryMatches(itemCategory, filter){
+  if(!filter || filter === 'all') return true;
+  const cat = String(itemCategory || '').toLowerCase().trim();
+  if(!cat) return false;
+  if(filter === 'roti'){
+    return ['roti','makanan','food','bread','bakery'].includes(cat) || cat.startsWith('roti') || cat.includes('makanan') || cat.includes('bread');
+  }
+  if(filter === 'kopi'){
+    return ['kopi','minuman','drink','coffee','cafe'].includes(cat) || cat.startsWith('kopi') || cat.includes('minuman') || cat.includes('coffee') || cat.includes('cafe');
+  }
+  return cat === String(filter).toLowerCase();
+}
 
 function setAuthUI(loggedIn, email = ''){
   isAdminAuthenticated = loggedIn;
@@ -167,18 +209,23 @@ function saveAdminProducts(list){
 }
 
 async function renderList(){
+  ensureAdminFilters();
+  updateFilterUI();
   const items = isAdminAuthenticated ? await getRemoteAdminProducts() : loadAdminProducts();
   if(!adminList) return;
-  if(items.length === 0){ adminList.innerHTML = '<p class="note">Belum ada produk admin.</p>'; return; }
-  adminList.innerHTML = items.map((it, idx)=>`
+  const filtered = (items || []).filter(it => {
+    return categoryMatches(it.category, currentCategoryFilter);
+  });
+  if(filtered.length === 0){ adminList.innerHTML = '<p class="note">Belum ada produk pada kategori ini.</p>'; return; }
+  adminList.innerHTML = filtered.map((it)=>`
     <div class="admin-gallery-item">
       <img src="${it.image_url || ''}" alt="${it.name}" />
       <div>
         <h4>${it.name}</h4>
         <small>${it.category} • Rp${Number(it.price).toLocaleString('id-ID')}</small>
         <div class="admin-actions">
-          <button data-edit="${idx}" class="btn">Edit</button>
-          <button data-delete="${idx}" class="btn danger">Hapus</button>
+          <button data-edit-id="${it.id}" class="btn">Edit</button>
+          <button data-delete-id="${it.id}" class="btn danger">Hapus</button>
         </div>
       </div>
     </div>
@@ -340,12 +387,29 @@ function resizeImageFile(file, maxWidth = 1200, quality = 0.8){
 async function uploadToSupabase(file){
   if(!supabase) return null;
   try{
-    const ext = file.name.split('.').pop();
+    const ext = (file.name || 'upload.jpg').split('.').pop();
     const fileName = `admin/${Date.now()}.${ext}`;
     const { data, error } = await supabase.storage.from(STORAGE_BUCKET).upload(fileName, file, { cacheControl: '3600', upsert: false });
-    if(error){ console.warn('Supabase upload error', error); return null; }
-    const { data: pub } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(fileName);
-    return pub?.publicUrl || null;
+    if(error){
+      console.warn('Supabase upload error', error);
+      return null;
+    }
+
+    // Try to get a public URL (works if bucket is public)
+    try{
+      const { data: pub } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(fileName);
+      if(pub?.publicUrl) return pub.publicUrl;
+    }catch(e){ /* ignore and try signed URL */ }
+
+    // If public URL not available (private bucket), try createSignedUrl as fallback
+    try{
+      // expires in seconds (7 days)
+      const expiresIn = 60 * 60 * 24 * 7;
+      const { data: signed, error: signedErr } = await supabase.storage.from(STORAGE_BUCKET).createSignedUrl(fileName, expiresIn);
+      if(signedErr){ console.warn('createSignedUrl error', signedErr); return null; }
+      return signed?.signedUrl || null;
+    }catch(e){ console.warn('signed url generation failed', e); return null; }
+
   }catch(err){ console.error(err); return null; }
 }
 
@@ -379,6 +443,7 @@ async function deleteRemoteProduct(productId){
 }
 
 let editingIndex = -1;
+let editingRemoteId = null;
 
 form.addEventListener('submit', async (e)=>{
   e.preventDefault();
@@ -408,11 +473,17 @@ form.addEventListener('submit', async (e)=>{
   }
 
   const products = loadAdminProducts();
-  const item = { id: editingIndex >= 0 ? products[editingIndex].id : 'a_'+Date.now(), name, description: desc, category, price, image_url: image };
+  const existingId = editingRemoteId ? editingRemoteId : (editingIndex >= 0 ? products[editingIndex]?.id : null);
+  const item = { id: existingId ? existingId : 'a_'+Date.now(), name, description: desc, category, price, image_url: image };
 
   if(editingIndex >= 0){
     products.splice(editingIndex, 1, item);
     editingIndex = -1;
+  } else if (editingRemoteId) {
+    // replace local copy with updated data if exists
+    const li = products.findIndex(p => String(p.id) === String(editingRemoteId));
+    if (li >= 0) products.splice(li, 1, item);
+    editingRemoteId = null;
   } else {
     products.unshift(item);
   }
@@ -427,10 +498,10 @@ form.addEventListener('submit', async (e)=>{
   }
 
   try{
-    const remote = await syncProductToRemote(item, item.id && !String(item.id).startsWith('a_') ? item.id : null);
+    const remote = await syncProductToRemote(item, (editingRemoteId && String(editingRemoteId)) ? editingRemoteId : (item.id && !String(item.id).startsWith('a_') ? item.id : null));
     if(remote?.id){
       const arr = loadAdminProducts();
-      const local = arr.findIndex(p => p.id === item.id);
+      const local = arr.findIndex(p => String(p.id) === String(item.id));
       if(local >= 0) {
         arr[local].id = String(remote.id);
         saveAdminProducts(arr);
@@ -463,33 +534,54 @@ pImageUrl.addEventListener('input', (e)=>{
 });
 
 adminList.addEventListener('click', (e)=>{
-  const del = e.target.closest('[data-delete]');
-  if(del){
-    const idx = Number(del.dataset.delete);
-    const arr = loadAdminProducts();
-    const removed = arr[idx];
-    arr.splice(idx,1);
+  const del = e.target.closest('[data-delete-id]');
+  if (del) {
+    const id = del.dataset.deleteId;
+    if (!id) return;
+    // remove from local storage list
+    const arr = loadAdminProducts().filter(p => String(p.id) !== String(id));
     saveAdminProducts(arr);
     renderList();
-    deleteRemoteProduct(removed?.id).catch(()=>{});
+    // if authenticated, also delete remote
+    if (isAdminAuthenticated) deleteRemoteProduct(id).catch(()=>{});
     return;
   }
 
-  const edt = e.target.closest('[data-edit]');
-  if(edt){
-    const idx = Number(edt.dataset.edit);
-    const arr = loadAdminProducts();
-    const item = arr[idx];
-    if(!item) return;
-    editingIndex = idx;
-    pName.value = item.name || '';
-    pDesc.value = item.description || '';
-    pCategory.value = item.category || 'roti';
-    pPrice.value = item.price || 0;
-    if(item.image_url){
-      if(pPreviewImg){ pPreviewImg.src = item.image_url; previewBox.style.display='block'; }
+  const edt = e.target.closest('[data-edit-id]');
+  if (edt) {
+    const id = edt.dataset.editId;
+    if (!id) return;
+    // reset editing trackers
+    editingIndex = -1;
+    editingRemoteId = null;
+    if (isAdminAuthenticated) {
+      // find product from remote set
+      getRemoteAdminProducts().then(remoteArr => {
+        const item = remoteArr.find(r => String(r.id) === String(id));
+        if (!item) return;
+        editingRemoteId = String(item.id);
+        pName.value = item.name || '';
+        pDesc.value = item.description || '';
+        pCategory.value = item.category || 'roti';
+        pPrice.value = item.price || 0;
+        if (item.image_url && pPreviewImg) { pPreviewImg.src = item.image_url; previewBox.style.display = 'block'; }
+        if (form && typeof form.scrollIntoView === 'function') form.scrollIntoView({ behavior: 'smooth', block: 'start' }); else window.scrollTo({ top: 0, behavior: 'smooth' });
+        try { pName.focus(); } catch (e) {}
+      }).catch(()=>{});
+    } else {
+      const arr = loadAdminProducts();
+      const idx = arr.findIndex(p => String(p.id) === String(id));
+      if (idx < 0) return;
+      const item = arr[idx];
+      editingIndex = idx;
+      pName.value = item.name || '';
+      pDesc.value = item.description || '';
+      pCategory.value = item.category || 'roti';
+      pPrice.value = item.price || 0;
+      if (item.image_url && pPreviewImg) { pPreviewImg.src = item.image_url; previewBox.style.display = 'block'; }
+      if (form && typeof form.scrollIntoView === 'function') form.scrollIntoView({ behavior: 'smooth', block: 'start' }); else window.scrollTo({ top: 0, behavior: 'smooth' });
+      try { pName.focus(); } catch (e) {}
     }
-    window.scrollTo({top:0,behavior:'smooth'});
   }
 });
 
@@ -511,10 +603,19 @@ async function uploadToLocalServer(blobFile){
   try{
     const fd = new FormData();
     fd.append('file', blobFile, (blobFile.name || `upload-${Date.now()}.jpg`));
-    const res = await fetch('http://localhost:5000/upload', { method: 'POST', body: fd });
-    if(!res.ok) throw new Error('Server upload failed');
-    const json = await res.json();
-    return json.url;
+    // try local dev server first
+    try{
+      const res = await fetch('http://localhost:5000/upload', { method: 'POST', body: fd });
+      if(res && res.ok){ const j = await res.json(); if(j?.url) return j.url; }
+    }catch(e){ /* ignore local server errors */ }
+
+    // if deployed on Netlify, try Netlify Function endpoint
+    try{
+      const res2 = await fetch('/.netlify/functions/upload', { method: 'POST', body: fd });
+      if(res2 && res2.ok){ const j2 = await res2.json(); if(j2?.url) return j2.url; }
+    }catch(e){ /* ignore */ }
+
+    return null;
   }catch(e){
     console.warn('Local server upload failed', e);
     return null;

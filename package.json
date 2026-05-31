@@ -1,13 +1,21 @@
 {
   "name": "saadah-bakery",
   "version": "1.0.0",
+  "private": true,
   "description": "Static website for Sa'adah Bakery with Supabase-backed admin dashboard",
   "scripts": {
+    "start-local-upload": "node scripts/local-upload-server.js",
     "build-config": "node build-config.js",
     "start": "npx http-server -p 5500 -c-1",
     "dev": "npx http-server -p 5500 -c-1",
     "prepare-deploy": "node build-config.js"
   },
   "author": "",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.27.0",
+    "busboy": "^1.6.0",
+    "express": "^4.18.2",
+    "multer": "^1.4.5-lts.1"
+  }
 }

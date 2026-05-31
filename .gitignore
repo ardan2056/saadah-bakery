@@ -1,4 +1,11 @@
 node_modules/
+uploads/
+config.js
+.env
+.DS_Store
+dist/
+/.netlify
+node_modules/
 .vscode/
 .DS_Store
 .env
