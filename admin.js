@@ -1211,8 +1211,13 @@ function renderTopGallery(){
   topGalleryList.innerHTML = arr.map((u, i)=>`<div style="position:relative;border-radius:8px;overflow:hidden;background:#fff;border:1px solid rgba(0,0,0,0.04);"><img src="${u}" style="width:100%;height:96px;object-fit:cover;display:block;"> <button data-remove-index="${i}" class="btn ghost" style="position:absolute;right:6px;top:6px;">Hapus</button></div>`).join('');
 }
 
+// Debug helpers for top gallery
+const topGalleryDebugEl = document.getElementById('topGalleryDebug');
+const refreshTopGalleryDebugBtn = document.getElementById('refreshTopGalleryDebug');
+const mirrorTopGalleryBtn = document.getElementById('mirrorTopGallery');
+
 renderTopGallery();
-renderTopGalleryDebug?.();
+renderTopGalleryDebug();
 
 if(topGalleryBrandSelect){
   topGalleryBrandSelect.addEventListener('change', ()=> renderTopGallery());
@@ -1273,11 +1278,6 @@ topGalleryList?.addEventListener('click', (e)=>{
   renderTopGallery();
   try{ renderTopGalleryDebug(); }catch(e){}
 });
-
-// Debug helpers for top gallery
-const topGalleryDebugEl = document.getElementById('topGalleryDebug');
-const refreshTopGalleryDebugBtn = document.getElementById('refreshTopGalleryDebug');
-const mirrorTopGalleryBtn = document.getElementById('mirrorTopGallery');
 
 function renderTopGalleryDebug(){
   if(!topGalleryDebugEl) return;
