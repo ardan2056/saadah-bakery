@@ -3,6 +3,37 @@ import { STORAGE_BUCKET, STORE_PHONE, SUPABASE_ANON_KEY, SUPABASE_URL } from "./
 
 const supabaseConfigured = SUPABASE_URL.startsWith("http") && SUPABASE_ANON_KEY && !SUPABASE_ANON_KEY.includes("ISI_");
 const supabase = supabaseConfigured ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+let siteAssetsCache = {};
+
+async function loadSiteAssets(){
+  if(!supabase || !supabaseConfigured) return;
+  try{
+    const { data, error } = await supabase.from('site_assets').select('key,image_url');
+    if(error){ console.warn('load site_assets error', error); return; }
+    siteAssetsCache = {};
+    (data || []).forEach(row => { if(row?.key) siteAssetsCache[row.key] = row.image_url || ''; });
+  }catch(e){ console.warn('load site_assets failed', e); }
+}
+
+function getSiteAssetValue(key, fallback = ''){
+  return siteAssetsCache[key] || localStorage.getItem(key) || fallback;
+}
+
+function setSiteAssetValueLocal(key, value){
+  try{ siteAssetsCache[key] = value || ''; }catch(e){}
+  try{ localStorage.setItem(key, value || ''); }catch(e){}
+}
+
+const siteAssetsReady = loadSiteAssets().then(()=>{
+  setTimeout(()=>{
+    syncBrandMarkImage();
+    setHeroBackground();
+    setAboutHeroImage();
+    setSinceLogoImage();
+    syncAdminLogoImage();
+    renderTopProductGallery();
+  }, 0);
+}).catch(()=>{});
 const menuGrid = document.getElementById("menuGrid");
 const menuPanelTitle = document.getElementById("menuPanelTitle");
 const searchInput = document.getElementById("searchInput");
@@ -47,7 +78,8 @@ function storageKeyForBrand(brand){
 }
 
 function loadTopProductImages(brand){
-  try{ return JSON.parse(localStorage.getItem(storageKeyForBrand(brand)) || '[]'); }catch(e){ return []; }
+  const raw = getSiteAssetValue(storageKeyForBrand(brand), localStorage.getItem(storageKeyForBrand(brand)) || '[]');
+  try{ return JSON.parse(raw || '[]'); }catch(e){ return []; }
 }
 
 function saveTopProductImages(brand, arr){
@@ -60,7 +92,7 @@ function loadAdminProductsFromStorage(){
 
 function syncBrandMarkImage() {
   if (!brandMarkImage) return;
-  const url = localStorage.getItem('adminWelcomeImage') || '';
+  const url = getSiteAssetValue('adminWelcomeImage');
   if (url) {
     brandMarkImage.src = url;
     brandMarkImage.style.display = 'block';
@@ -752,7 +784,7 @@ function setHeroBackground() {
   const heroEl = document.querySelector('.hero.hero-landing');
   if (!heroEl) return;
   // Priority: explicit localStorage heroImage -> data-hero-image attribute -> topProductImages gallery
-  let url = localStorage.getItem('heroImage') || heroEl.dataset.heroImage || '';
+  let url = getSiteAssetValue('heroImage', heroEl.dataset.heroImage || '');
   if ((!url || url === '') && topProductImages && topProductImages.length) {
     url = topProductImages[0];
   }
@@ -793,7 +825,7 @@ if(submitReviewBtn){
 function setAboutHeroImage(){
   const aboutPhoto = document.querySelector('.hero-visual-photo');
   if(!aboutPhoto) return;
-  const url = localStorage.getItem('aboutHeroImage') || '';
+  const url = getSiteAssetValue('aboutHeroImage');
   if(!url){
     // keep existing decorative background
     return;
@@ -810,7 +842,7 @@ setAboutHeroImage();
 // Set small 'Since' logo in hero visual if present
 function setSinceLogoImage(){
   const ribbonEls = document.querySelectorAll('.hero-visual-ribbon, .hero-annotation');
-  const url = localStorage.getItem('sinceLogoImage') || '';
+  const url = getSiteAssetValue('sinceLogoImage');
   ribbonEls.forEach(el=>{
     if(!el) return;
     if(url){
@@ -825,7 +857,7 @@ function setSinceLogoImage(){
 // Sync admin header logo (adminLogoImage preferred, fallback to adminWelcomeImage)
 function syncAdminLogoImage(){
   if(!brandMarkImage) return;
-  const url = localStorage.getItem('adminLogoImage') || localStorage.getItem('adminWelcomeImage') || '';
+  const url = getSiteAssetValue('adminLogoImage') || getSiteAssetValue('adminWelcomeImage') || '';
   if(url){ brandMarkImage.src = url; brandMarkImage.style.display = 'block'; }
   else { brandMarkImage.removeAttribute('src'); brandMarkImage.style.display = 'none'; }
 }

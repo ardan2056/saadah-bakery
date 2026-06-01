@@ -6,6 +6,33 @@ let SUPABASE_URL = '';
 let SUPABASE_ANON_KEY = '';
 let STORAGE_BUCKET = 'products';
 let supabase = null;
+let supabaseConfigured = false;
+let siteAssetsCache = {};
+
+async function loadSiteAssets(){
+  if(!supabase || !supabaseConfigured) return;
+  try{
+    const { data, error } = await supabase.from('site_assets').select('key,image_url');
+    if(error){ console.warn('load site_assets error', error); return; }
+    siteAssetsCache = {};
+    (data || []).forEach(row => { if(row?.key) siteAssetsCache[row.key] = row.image_url || ''; });
+  }catch(e){ console.warn('load site_assets failed', e); }
+}
+
+function getSiteAssetValue(key, fallback = ''){
+  return siteAssetsCache[key] || localStorage.getItem(key) || fallback;
+}
+
+async function saveSiteAssetValue(key, value){
+  try{ siteAssetsCache[key] = value || ''; }catch(e){}
+  try{ localStorage.setItem(key, value || ''); }catch(e){}
+  if(supabase && supabaseConfigured){
+    try{
+      const { error } = await supabase.from('site_assets').upsert([{ key, image_url: value || '' }], { onConflict: 'key' });
+      if(error) console.warn('save site_assets error', error);
+    }catch(e){ console.warn('save site_assets failed', e); }
+  }
+}
 
 async function loadConfigAndInit(){
   // Try dynamic import of local config with a timestamp to bypass cache
@@ -31,7 +58,7 @@ async function loadConfigAndInit(){
     }catch(_){ /* ignore */ }
   }
 
-  const supabaseConfigured = SUPABASE_URL && SUPABASE_URL.startsWith('http') && SUPABASE_ANON_KEY && !SUPABASE_ANON_KEY.includes('ISI_');
+  supabaseConfigured = SUPABASE_URL && SUPABASE_URL.startsWith('http') && SUPABASE_ANON_KEY && !SUPABASE_ANON_KEY.includes('ISI_');
   if(supabaseConfigured){
     supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     // Attach auth state listener now that supabase exists
@@ -44,6 +71,7 @@ async function loadConfigAndInit(){
         }
       });
     }catch(_){ }
+    await loadSiteAssets();
   }
 }
 
@@ -197,7 +225,7 @@ adminLogoutBtn?.addEventListener('click', async ()=>{
 });
 
 // Initialize config and Supabase, then refresh auth state
-loadConfigAndInit().then(()=>{
+const configReady = loadConfigAndInit().then(()=>{
   refreshAuthState().catch(()=>{});
 }).catch(()=>{});
 
@@ -669,7 +697,7 @@ const welcomePreview = document.getElementById('welcomePreview');
 const saveWelcomeBtn = document.getElementById('saveWelcomeImage');
 
 function loadWelcomeThumb(){
-  const url = localStorage.getItem('adminWelcomeImage') || '';
+  const url = getSiteAssetValue('adminWelcomeImage');
   if(url && adminThumb) adminThumb.src = url;
 }
 
@@ -689,6 +717,7 @@ if(welcomeUrlInput){
 
 if(saveWelcomeBtn){
   saveWelcomeBtn.addEventListener('click', async ()=>{
+    await configReady;
     let url = (welcomeUrlInput && welcomeUrlInput.value.trim()) || '';
     if(!url && welcomeFileInput && welcomeFileInput.files && welcomeFileInput.files[0]){
       // try local server then supabase then data-url
@@ -700,7 +729,7 @@ if(saveWelcomeBtn){
       url = uploaded;
     }
     if(!url) return alert('Pilih file atau masukkan URL');
-    localStorage.setItem('adminWelcomeImage', url);
+    await saveSiteAssetValue('adminWelcomeImage', url);
     loadWelcomeThumb();
     alert('Thumbnail sambutan tersimpan');
   });
@@ -735,6 +764,7 @@ if(heroUrlInput){
 
 if(saveHeroBtn){
   saveHeroBtn.addEventListener('click', async ()=>{
+    await configReady;
     let url = (heroUrlInput && heroUrlInput.value.trim()) || '';
     if(!url && heroFileInput && heroFileInput.files && heroFileInput.files[0]){
       let file = heroFileInput.files[0];
@@ -746,7 +776,7 @@ if(saveHeroBtn){
       url = uploaded;
     }
     if(!url) return alert('Pilih file atau masukkan URL untuk hero.');
-    localStorage.setItem('heroImage', url);
+    await saveSiteAssetValue('heroImage', url);
     try{ if(channel) channel.postMessage({type:'media-updated', key:'heroImage', url}); }catch(e){}
     alert('Hero beranda tersimpan.');
   });
@@ -769,6 +799,7 @@ if(aboutUrlInput){
 
 if(saveAboutBtn){
   saveAboutBtn.addEventListener('click', async ()=>{
+    await configReady;
     let url = (aboutUrlInput && aboutUrlInput.value.trim()) || '';
     if(!url && aboutFileInput && aboutFileInput.files && aboutFileInput.files[0]){
       let file = aboutFileInput.files[0];
@@ -780,7 +811,7 @@ if(saveAboutBtn){
       url = uploaded;
     }
     if(!url) return alert('Pilih file atau masukkan URL untuk About.');
-    localStorage.setItem('aboutHeroImage', url);
+    await saveSiteAssetValue('aboutHeroImage', url);
     try{ if(channel) channel.postMessage({type:'media-updated', key:'aboutHeroImage', url}); }catch(e){}
     alert('Gambar About tersimpan.');
   });
@@ -808,6 +839,7 @@ if(sinceUrlInput){
 
 if(saveSinceBtn){
   saveSinceBtn.addEventListener('click', async ()=>{
+    await configReady;
     let url = (sinceUrlInput && sinceUrlInput.value.trim()) || '';
     if(!url && sinceFileInput && sinceFileInput.files && sinceFileInput.files[0]){
       let file = sinceFileInput.files[0];
@@ -819,7 +851,7 @@ if(saveSinceBtn){
       url = uploaded;
     }
     if(!url) return alert('Pilih file atau masukkan URL untuk logo Since.');
-    localStorage.setItem('sinceLogoImage', url);
+    await saveSiteAssetValue('sinceLogoImage', url);
     try{ if(channel) channel.postMessage({type:'media-updated', key:'sinceLogoImage', url}); }catch(e){}
     if(sincePreviewBox){ sincePreviewBox.querySelector('img').src = url; sincePreviewBox.style.display = 'block'; }
     alert('Logo Since tersimpan.');
@@ -848,6 +880,7 @@ if(adminLogoUrlInput){
 
 if(saveAdminLogoBtn){
   saveAdminLogoBtn.addEventListener('click', async ()=>{
+    await configReady;
     let url = (adminLogoUrlInput && adminLogoUrlInput.value.trim()) || '';
     if(!url && adminLogoFileInput && adminLogoFileInput.files && adminLogoFileInput.files[0]){
       let file = adminLogoFileInput.files[0];
@@ -859,7 +892,7 @@ if(saveAdminLogoBtn){
       url = uploaded;
     }
     if(!url) return alert('Pilih file atau masukkan URL untuk logo admin.');
-    localStorage.setItem('adminLogoImage', url);
+    await saveSiteAssetValue('adminLogoImage', url);
     try{ if(channel) channel.postMessage({type:'media-updated', key:'adminLogoImage', url}); }catch(e){}
     if(adminLogoPreviewBox){ adminLogoPreviewBox.querySelector('img').src = url; adminLogoPreviewBox.style.display = 'block'; }
     alert('Logo Admin tersimpan.');
@@ -875,12 +908,18 @@ const topGalleryBrandSelect = document.getElementById('topGalleryBrandSelect');
 
 function loadTopGallery(brand){
   const key = (brand === 'kopi') ? 'topProductImages_kopi' : 'topProductImages_roti';
-  try{ return JSON.parse(localStorage.getItem(key)||'[]'); }catch(e){ return []; }
+  const raw = getSiteAssetValue(key, localStorage.getItem(key) || '[]');
+  try{ return JSON.parse(raw || '[]'); }catch(e){ return []; }
 }
 
 function saveTopGalleryArr(brand, arr){
   const key = (brand === 'kopi') ? 'topProductImages_kopi' : 'topProductImages_roti';
-  try{ localStorage.setItem(key, JSON.stringify(arr||[])); }catch(e){}
+  const payload = JSON.stringify(arr || []);
+  try{ localStorage.setItem(key, payload); }catch(e){}
+  try{ siteAssetsCache[key] = payload; }catch(e){}
+  if(supabase && supabaseConfigured){
+    supabase.from('site_assets').upsert([{ key, image_url: payload }], { onConflict: 'key' }).catch(err => console.warn('save top gallery site_assets error', err));
+  }
 }
 
 function renderTopGallery(){
@@ -899,6 +938,7 @@ if(topGalleryBrandSelect){
 
 if(saveTopGalleryBtn){
   saveTopGalleryBtn.addEventListener('click', async ()=>{
+    await configReady;
     if(!topGalleryFiles || !topGalleryFiles.files || topGalleryFiles.files.length===0) return alert('Pilih file terlebih dahulu.');
     const brand = topGalleryBrandSelect ? topGalleryBrandSelect.value : 'roti';
     const files = Array.from(topGalleryFiles.files);
