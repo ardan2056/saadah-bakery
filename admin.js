@@ -843,6 +843,41 @@ if(saveAboutBtn){
   });
 }
 
+// --- Founder (Ibu Saadah) photo handlers ---
+const founderUrlInput = document.getElementById('founderImageUrl');
+const founderFileInput = document.getElementById('founderImageFile');
+const founderPreviewEl = document.getElementById('founderPreview');
+const saveFounderBtn = document.getElementById('saveFounderImage');
+
+if(founderFileInput){
+  founderFileInput.addEventListener('change', async (e)=>{
+    const f = e.target.files && e.target.files[0];
+    if(!f){ if(founderPreviewEl) founderPreviewEl.style.display='none'; return; }
+    try{ const d = await toDataURL(f); if(founderPreviewEl){ founderPreviewEl.querySelector('img').src = d; founderPreviewEl.style.display='block'; } }catch(e){console.error(e)}
+  });
+}
+
+if(saveFounderBtn){
+  saveFounderBtn.addEventListener('click', async ()=>{
+    await configReady;
+    let url = (founderUrlInput && founderUrlInput.value.trim()) || '';
+    if(!url && founderFileInput && founderFileInput.files && founderFileInput.files[0]){
+      let file = founderFileInput.files[0];
+      try{ const resized = await resizeImageFile(file, 800, 0.8); if(resized) file = resized; }catch(e){}
+      let uploaded = null;
+      if(supabaseConfigured) uploaded = await uploadToSupabase(file instanceof Blob ? new File([file], (founderFileInput.files[0]||{}).name || 'founder.jpg', {type: file.type || 'image/jpeg'}) : file);
+      if(!uploaded) uploaded = await uploadToLocalServer(file);
+      if(!uploaded) uploaded = await toDataURL(founderFileInput.files[0]);
+      url = uploaded;
+    }
+    if(!url) return alert('Pilih file atau masukkan URL untuk foto Ibu Saadah.');
+    await saveSiteAssetValue('founderPhoto', url);
+    try{ if(channel) channel.postMessage({type:'media-updated', key:'founderPhoto', url}); }catch(e){}
+    if(founderPreviewEl){ founderPreviewEl.querySelector('img').src = url; founderPreviewEl.style.display = 'block'; }
+    alert('Foto Ibu Saadah tersimpan.');
+  });
+}
+
 // --- Since Logo handlers ---
 const sinceUrlInput = document.getElementById('sinceImageUrl');
 const sinceFileInput = document.getElementById('sinceImageFile');
