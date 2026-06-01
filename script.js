@@ -861,6 +861,40 @@ function setFounderPhoto(){
 
 setFounderPhoto();
 
+// Preload helper: load image off-DOM then apply when ready to avoid flicker
+function preloadAndApply(url, applyFn){
+  if(!url) return;
+  try{
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = ()=>{ try{ applyFn(url); }catch(e){} };
+    img.onerror = ()=>{ try{ applyFn(url); }catch(e){} };
+    img.src = url;
+  }catch(e){ try{ applyFn(url); }catch(_){} }
+}
+
+// Try to fetch high-priority assets directly and apply immediately (reduces perceived delay)
+async function prioritizeAssets(){
+  if(!supabase || !supabaseConfigured) return;
+  const keys = ['founderPhoto','adminLogoImage','heroImage'];
+  try{
+    await Promise.all(keys.map(async (key)=>{
+      try{
+        const { data, error } = await supabase.from('site_assets').select('image_url').eq('key', key).limit(1).single();
+        if(!error && data?.image_url){
+          siteAssetsCache[key] = data.image_url;
+          if(key === 'founderPhoto') preloadAndApply(data.image_url, ()=>setFounderPhoto());
+          if(key === 'adminLogoImage') preloadAndApply(data.image_url, ()=>syncAdminLogoImage());
+          if(key === 'heroImage') preloadAndApply(data.image_url, ()=>setHeroBackground());
+        }
+      }catch(_){ }
+    }));
+  }catch(e){ }
+}
+
+// Kick off prioritized fetch without waiting for full site_assets load
+prioritizeAssets().catch(()=>{});
+
 setAboutHeroImage();
 
 // Set small 'Since' logo in hero visual if present
