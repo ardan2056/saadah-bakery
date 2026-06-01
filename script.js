@@ -196,6 +196,55 @@ function setBrand(b) {
 
   // update top gallery for selected brand
   renderTopProductGallery();
+  // fail-safe prune of any DOM nodes that belong to the opposite category
+  pruneDomOppositeCategory(b).catch(()=>{});
+}
+
+// Hide DOM product cards that belong to the opposite category as a fail-safe
+async function pruneDomOppositeCategory(brand){
+  try{
+    const normalize = s => (s||'').toString().toLowerCase().trim();
+    let rotiNames = new Set();
+    let kopiNames = new Set();
+    // Prefer remote list if supabase configured
+    if(supabaseConfigured && supabase){
+      try{
+        const { data } = await supabase.from('products').select('name,category');
+        (data||[]).forEach(p=>{
+          const n = normalize(p.name);
+          const c = canonicalCategory(p.category || '');
+          if(!n) return;
+          if(c === 'roti') rotiNames.add(n);
+          if(c === 'kopi') kopiNames.add(n);
+        });
+      }catch(e){ /* ignore */ }
+    }
+    // Fallback to client products/localStorage
+    if(rotiNames.size === 0 && kopiNames.size === 0){
+      const local = loadAdminProductsFromStorage();
+      (local||[]).forEach(p=>{ const n=normalize(p.name); const c = canonicalCategory(p.category||''); if(!n) return; if(c==='roti') rotiNames.add(n); if(c==='kopi') kopiNames.add(n); });
+      if((rotiNames.size===0 || kopiNames.size===0) && Array.isArray(window.products) && window.products.length){
+        window.products.forEach(p=>{ const n=normalize(p.name); const c = canonicalCategory(p.category||''); if(!n) return; if(c==='roti') rotiNames.add(n); if(c==='kopi') kopiNames.add(n); });
+      }
+    }
+
+    // Walk DOM cards and hide mismatches
+    const cards = Array.from(document.querySelectorAll('#menuGrid article.card'));
+    for(const card of cards){
+      try{
+        const h = card.querySelector('h4'); if(!h) continue;
+        const name = normalize(h.textContent||'');
+        if(!name) continue;
+        if(brand === 'coffee'){
+          if(rotiNames.has(name)) { card.style.display = 'none'; continue; }
+        } else if(brand === 'bakery'){
+          if(kopiNames.has(name)) { card.style.display = 'none'; continue; }
+        }
+        // otherwise ensure visible
+        card.style.display = '';
+      }catch(e){ }
+    }
+  }catch(e){ console.warn('pruneDomOppositeCategory failed', e); }
 }
 
 brandBakeryBtn?.addEventListener('click', () => setBrand('bakery'));
