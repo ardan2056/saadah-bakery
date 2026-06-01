@@ -774,6 +774,7 @@ refreshAuthState();
 const adminProductsDebugEl = document.getElementById('adminProductsDebug');
 const refreshProductsDebugBtn = document.getElementById('refreshProductsDebug');
 const normalizeProductsCategoriesBtn = document.getElementById('normalizeProductsCategories');
+const pruneMismatchedProductsBtn = document.getElementById('pruneMismatchedProducts');
 
 function renderProductsDebug(){
   if(!adminProductsDebugEl) return;
@@ -816,8 +817,36 @@ async function normalizeProductsCategories(){
   }
 }
 
+function pruneMismatchedProducts(){
+  const arr = loadAdminProducts();
+  if(!arr || !arr.length) return alert('Tidak ada produk lokal untuk dipruning.');
+  const pruned = [];
+  let removed = 0;
+  for(const p of arr){
+    const mapped = mapCategoryValue(p.category || '');
+    if(mapped === 'roti' || mapped === 'kopi'){
+      pruned.push(Object.assign({}, p, { category: mapped }));
+    } else {
+      removed++;
+    }
+  }
+  saveAdminProducts(pruned);
+  renderList();
+  renderProductsDebug();
+  alert(`Pruned ${removed} produk yang kategori-nya tidak cocok. Produk valid tetap dipertahankan.`);
+  if(supabase && isAdminAuthenticated){
+    // sync canonical categories back to remote rows when possible
+    pruned.forEach(async (p)=>{
+      if(p.id && !String(p.id).startsWith('a_')){
+        try{ await syncProductToRemote(p, p.id); }catch(e){}
+      }
+    });
+  }
+}
+
 if(refreshProductsDebugBtn){ refreshProductsDebugBtn.addEventListener('click', ()=>{ renderProductsDebug(); alert('Produk debug diperbarui'); }); }
 if(normalizeProductsCategoriesBtn){ normalizeProductsCategoriesBtn.addEventListener('click', ()=>{ if(confirm('Normalize semua kategori produk lokal sekarang?')) normalizeProductsCategories(); }); }
+if(pruneMismatchedProductsBtn){ pruneMismatchedProductsBtn.addEventListener('click', ()=>{ if(confirm('Prune produk lokal yang kategori-nya tidak valid? Ini akan mempertahankan hanya roti/kopi.')) pruneMismatchedProducts(); }); }
 renderProductsDebug();
 // Auto-normalize categories once on load to fix common mistakes
 (async ()=>{
