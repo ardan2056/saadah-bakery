@@ -1061,6 +1061,7 @@ function renderTopGallery(){
 }
 
 renderTopGallery();
+renderTopGalleryDebug?.();
 
 if(topGalleryBrandSelect){
   topGalleryBrandSelect.addEventListener('change', ()=> renderTopGallery());
@@ -1091,6 +1092,8 @@ if(saveTopGalleryBtn){
     try{ if(channel) channel.postMessage({type:'media-updated', key}); }catch(e){}
     renderTopGallery();
     alert('Foto galeri berhasil ditambahkan ke ' + (normBrand === 'kopi' ? 'Minuman' : 'Roti') + ` (key: ${key})`);
+    // update debug panel
+    try{ renderTopGalleryDebug(); }catch(e){}
     topGalleryFiles.value = '';
   });
 }
@@ -1117,7 +1120,42 @@ topGalleryList?.addEventListener('click', (e)=>{
   saveTopGalleryArr(brand, arr);
   try{ if(channel) channel.postMessage({type:'media-updated', key: (brand === 'kopi' ? 'topProductImages_kopi' : 'topProductImages_roti')}); }catch(e){}
   renderTopGallery();
+  try{ renderTopGalleryDebug(); }catch(e){}
 });
+
+// Debug helpers for top gallery
+const topGalleryDebugEl = document.getElementById('topGalleryDebug');
+const refreshTopGalleryDebugBtn = document.getElementById('refreshTopGalleryDebug');
+const mirrorTopGalleryBtn = document.getElementById('mirrorTopGallery');
+
+function renderTopGalleryDebug(){
+  if(!topGalleryDebugEl) return;
+  const roti = localStorage.getItem('topProductImages_roti') || siteAssetsCache['topProductImages_roti'] || '[]';
+  const kopi = localStorage.getItem('topProductImages_kopi') || siteAssetsCache['topProductImages_kopi'] || '[]';
+  topGalleryDebugEl.innerHTML = `<div><strong>Debug Top Gallery</strong></div>` +
+    `<div style="margin-top:8px;"><em>topProductImages_roti</em>: <pre style="white-space:pre-wrap; max-height:120px; overflow:auto; background:#fff;padding:8px;border-radius:6px;">${roti}</pre></div>` +
+    `<div style="margin-top:8px;"><em>topProductImages_kopi</em>: <pre style="white-space:pre-wrap; max-height:120px; overflow:auto; background:#fff;padding:8px;border-radius:6px;">${kopi}</pre></div>`;
+}
+
+if(refreshTopGalleryDebugBtn){ refreshTopGalleryDebugBtn.addEventListener('click', ()=>{ renderTopGalleryDebug(); alert('Debug refreshed'); }); }
+
+if(mirrorTopGalleryBtn){
+  mirrorTopGalleryBtn.addEventListener('click', async ()=>{
+    const rotiArr = loadTopGallery('roti');
+    const kopiArr = loadTopGallery('kopi');
+    const combinedRoti = Array.from(new Set(rotiArr.concat(kopiArr)));
+    const combinedKopi = Array.from(new Set(kopiArr.concat(rotiArr)));
+    saveTopGalleryArr('roti', combinedRoti);
+    saveTopGalleryArr('kopi', combinedKopi);
+    try{ if(channel) channel.postMessage({type:'media-updated', key:'topProductImages_roti'}); }catch(e){}
+    try{ if(channel) channel.postMessage({type:'media-updated', key:'topProductImages_kopi'}); }catch(e){}
+    renderTopGallery(); renderTopGalleryDebug();
+    alert('Gallery mirrored to both categories.');
+  });
+}
+
+// initial debug render
+try{ renderTopGalleryDebug(); }catch(e){}
 
 
 // Export / Import handlers
