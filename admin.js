@@ -475,6 +475,32 @@ function resizeImageFile(file, maxWidth = 1200, quality = 0.8){
   });
 }
 
+// Convert image Blob/File to WebP via canvas; returns a Blob (image/webp)
+function convertToWebP(file, maxWidth = 1200, quality = 0.8){
+  return new Promise((res, rej)=>{
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      let { width, height } = img;
+      if(width > maxWidth){
+        height = Math.round((maxWidth / width) * height);
+        width = maxWidth;
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img,0,0,width,height);
+      canvas.toBlob((blob)=>{
+        URL.revokeObjectURL(url);
+        res(blob);
+      }, 'image/webp', quality);
+    };
+    img.onerror = (e)=>{ URL.revokeObjectURL(url); rej(e); };
+    img.src = url;
+  });
+}
+
 async function uploadToSupabase(file){
   if(!supabase) return null;
   try{
@@ -796,7 +822,11 @@ if(saveHeroBtn){
       let file = heroFileInput.files[0];
       try{ const resized = await resizeImageFile(file, 1600, 0.8); if(resized) file = resized; }catch(e){}
       let uploaded = null;
-      if(supabaseConfigured) uploaded = await uploadToSupabase(file instanceof Blob ? new File([file], (heroFileInput.files[0]||{}).name || 'hero.jpg', {type: file.type || 'image/jpeg'}) : file);
+      try{
+        const webp = await convertToWebP(file, 1600, 0.8);
+        if(supabaseConfigured) uploaded = await uploadToSupabase(new File([webp], (heroFileInput.files[0]||{}).name ? `${heroFileInput.files[0].name}.webp` : 'hero.webp', {type: 'image/webp'}));
+      }catch(e){}
+      if(!uploaded){ if(supabaseConfigured) uploaded = await uploadToSupabase(file instanceof Blob ? new File([file], (heroFileInput.files[0]||{}).name || 'hero.jpg', {type: file.type || 'image/jpeg'}) : file); }
       if(!uploaded) uploaded = await uploadToLocalServer(file);
       if(!uploaded) uploaded = await toDataURL(heroFileInput.files[0]);
       url = uploaded;
@@ -866,8 +896,13 @@ if(saveFounderBtn){
       // 1) create small thumbnail and upload first for fast public visibility
       try{
         const thumbBlob = await resizeImageFile(file, 420, 0.7);
+        // prefer WebP thumbnail
         let thumbUrl = null;
-        if(supabaseConfigured) thumbUrl = await uploadToSupabase(new File([thumbBlob], (founderFileInput.files[0]||{}).name ? `thumb_${founderFileInput.files[0].name}` : `founder_thumb.jpg`, {type: 'image/jpeg'}));
+        try{
+          const thumbWebp = await convertToWebP(thumbBlob, 420, 0.7);
+          if(supabaseConfigured) thumbUrl = await uploadToSupabase(new File([thumbWebp], (founderFileInput.files[0]||{}).name ? `thumb_${founderFileInput.files[0].name}.webp` : `founder_thumb.webp`, {type: 'image/webp'}));
+        }catch(e){ /* fall back to jpeg */ }
+        if(!thumbUrl){ if(supabaseConfigured) thumbUrl = await uploadToSupabase(new File([thumbBlob], (founderFileInput.files[0]||{}).name ? `thumb_${founderFileInput.files[0].name}` : `founder_thumb.jpg`, {type: 'image/jpeg'})); }
         if(!thumbUrl) thumbUrl = await uploadToLocalServer(thumbBlob);
         if(!thumbUrl) thumbUrl = await toDataURL(thumbBlob);
         if(thumbUrl){
@@ -879,7 +914,12 @@ if(saveFounderBtn){
         // 2) upload larger/full image in background and replace when ready
         try{ const resized = await resizeImageFile(file, 1200, 0.82); if(resized) file = resized; }catch(e){}
         let uploaded = null;
-        if(supabaseConfigured) uploaded = await uploadToSupabase(file instanceof Blob ? new File([file], (founderFileInput.files[0]||{}).name || 'founder.jpg', {type: file.type || 'image/jpeg'}) : file);
+        // try WebP full first
+        try{
+          const webp = await convertToWebP(file, 1200, 0.82);
+          if(supabaseConfigured) uploaded = await uploadToSupabase(new File([webp], (founderFileInput.files[0]||{}).name ? `${founderFileInput.files[0].name}.webp` : 'founder.webp', {type: 'image/webp'}));
+        }catch(e){ }
+        if(!uploaded){ if(supabaseConfigured) uploaded = await uploadToSupabase(file instanceof Blob ? new File([file], (founderFileInput.files[0]||{}).name || 'founder.jpg', {type: file.type || 'image/jpeg'}) : file); }
         if(!uploaded) uploaded = await uploadToLocalServer(file);
         if(!uploaded) uploaded = await toDataURL(founderFileInput.files[0]);
         url = uploaded;
@@ -964,7 +1004,11 @@ if(saveAdminLogoBtn){
       let file = adminLogoFileInput.files[0];
       try{ const resized = await resizeImageFile(file, 1000, 0.8); if(resized) file = resized; }catch(e){}
       let uploaded = null;
-      if(supabaseConfigured) uploaded = await uploadToSupabase(file instanceof Blob ? new File([file], (adminLogoFileInput.files[0]||{}).name || 'admin-logo.jpg', {type: file.type || 'image/jpeg'}) : file);
+      try{
+        const webp = await convertToWebP(file, 1000, 0.8);
+        if(supabaseConfigured) uploaded = await uploadToSupabase(new File([webp], (adminLogoFileInput.files[0]||{}).name ? `${adminLogoFileInput.files[0].name}.webp` : 'admin-logo.webp', {type: 'image/webp'}));
+      }catch(e){}
+      if(!uploaded){ if(supabaseConfigured) uploaded = await uploadToSupabase(file instanceof Blob ? new File([file], (adminLogoFileInput.files[0]||{}).name || 'admin-logo.jpg', {type: file.type || 'image/jpeg'}) : file); }
       if(!uploaded) uploaded = await uploadToLocalServer(file);
       if(!uploaded) uploaded = await toDataURL(adminLogoFileInput.files[0]);
       url = uploaded;
