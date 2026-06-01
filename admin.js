@@ -714,6 +714,55 @@ window.addEventListener('storage', (e)=>{ if(e.key && e.key.startsWith('adminPro
 
 renderList();
 refreshAuthState();
+// Product debug panel
+const adminProductsDebugEl = document.getElementById('adminProductsDebug');
+const refreshProductsDebugBtn = document.getElementById('refreshProductsDebug');
+const normalizeProductsCategoriesBtn = document.getElementById('normalizeProductsCategories');
+
+function renderProductsDebug(){
+  if(!adminProductsDebugEl) return;
+  const arr = loadAdminProducts();
+  adminProductsDebugEl.innerHTML = `<div><strong>Admin Products (local)</strong></div><pre style="white-space:pre-wrap; max-height:200px; overflow:auto; background:#fff;padding:8px;border-radius:6px;">${JSON.stringify(arr, null, 2)}</pre>`;
+}
+
+function mapCategoryValue(c){
+  if(!c) return c;
+  const s = String(c).toLowerCase().trim();
+  if(['kopi','coffee','minuman','drink','cafe'].some(x => s.includes(x) || s===x)) return 'kopi';
+  if(['roti','bread','bakery','makanan','food'].some(x => s.includes(x) || s===x)) return 'roti';
+  return s;
+}
+
+async function normalizeProductsCategories(){
+  const arr = loadAdminProducts();
+  if(!arr || !arr.length) return alert('Tidak ada produk lokal untuk dinormalisasi.');
+  let changed = 0;
+  for(const p of arr){
+    const newCat = mapCategoryValue(p.category || '');
+    if(newCat && newCat !== p.category){ p.category = newCat; changed++; }
+  }
+  if(changed){
+    saveAdminProducts(arr);
+    renderList();
+    renderProductsDebug();
+    alert('Normalized categories for ' + changed + ' products locally.');
+    // try sync to remote for authenticated items
+    if(supabase && isAdminAuthenticated){
+      for(const p of arr){
+        if(p.id && !String(p.id).startsWith('a_')){
+          try{ await syncProductToRemote(p, p.id); }catch(e){}
+        }
+      }
+      alert('Attempted to sync normalized categories to Supabase for remote products.');
+    }
+  } else {
+    alert('No category changes detected.');
+  }
+}
+
+if(refreshProductsDebugBtn){ refreshProductsDebugBtn.addEventListener('click', ()=>{ renderProductsDebug(); alert('Produk debug diperbarui'); }); }
+if(normalizeProductsCategoriesBtn){ normalizeProductsCategoriesBtn.addEventListener('click', ()=>{ if(confirm('Normalize semua kategori produk lokal sekarang?')) normalizeProductsCategories(); }); }
+renderProductsDebug();
 
 // Try local server upload if Supabase not configured
 async function uploadToLocalServer(blobFile){
