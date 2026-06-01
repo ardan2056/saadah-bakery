@@ -34,6 +34,31 @@ async function saveSiteAssetValue(key, value){
   }
 }
 
+
+async function migrateLegacySiteAssetsFromLocalStorage(){
+  const simpleKeys = ['adminWelcomeImage', 'heroImage', 'aboutHeroImage', 'sinceLogoImage', 'adminLogoImage'];
+  for(const key of simpleKeys){
+    const remoteValue = siteAssetsCache[key] || '';
+    const localValue = localStorage.getItem(key) || '';
+    if(!remoteValue && localValue){
+      await saveSiteAssetValue(key, localValue);
+    }
+  }
+
+  const galleryKeys = ['topProductImages_roti', 'topProductImages_kopi'];
+  for(const key of galleryKeys){
+    const remoteValue = siteAssetsCache[key] || '';
+    const localValue = localStorage.getItem(key) || '';
+    if(!remoteValue && localValue){
+      try{
+        const arr = JSON.parse(localValue);
+        if(Array.isArray(arr) && arr.length){
+          await saveSiteAssetValue(key, JSON.stringify(arr));
+        }
+      }catch(e){ /* ignore bad legacy data */ }
+    }
+  }
+}
 async function loadConfigAndInit(){
   // Try dynamic import of local config with a timestamp to bypass cache
   try{
@@ -72,6 +97,7 @@ async function loadConfigAndInit(){
       });
     }catch(_){ }
     await loadSiteAssets();
+    await migrateLegacySiteAssetsFromLocalStorage();
   }
 }
 
