@@ -622,7 +622,11 @@ form.addEventListener('submit', async (e)=>{
   const name = pName.value.trim();
   const desc = pDesc.value.trim();
   // normalize category before saving (ensure 'roti' or 'kopi')
-  let category = mapCategoryValue(pCategory && pCategory.value ? pCategory.value : '');
+  let category = strictCategoryValue(pCategory && pCategory.value ? pCategory.value : '');
+  if(!category){
+    alert('Kategori harus Roti atau Minuman.');
+    return;
+  }
   const price = Number(pPrice.value) || 0;
   let image = pImageUrl.value.trim();
 
@@ -788,6 +792,11 @@ function mapCategoryValue(c){
   if(['kopi','coffee','minuman','drink','cafe'].some(x => s.includes(x) || s===x)) return 'kopi';
   if(['roti','bread','bakery','makanan','food'].some(x => s.includes(x) || s===x)) return 'roti';
   return s;
+}
+
+function strictCategoryValue(c){
+  const mapped = mapCategoryValue(c);
+  return (mapped === 'roti' || mapped === 'kopi') ? mapped : null;
 }
 
 async function normalizeProductsCategories(){
