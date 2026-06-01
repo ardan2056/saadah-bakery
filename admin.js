@@ -1028,14 +1028,22 @@ const clearTopGalleryBtn = document.getElementById('clearTopGallery');
 const topGalleryList = document.getElementById('topGalleryList');
 const topGalleryBrandSelect = document.getElementById('topGalleryBrandSelect');
 
+function normalizeGalleryBrand(brand){
+  const b = (brand||'').toString().toLowerCase().trim();
+  const kopiSyn = ['kopi','coffee','minuman','drink','beverage','minum'];
+  return kopiSyn.includes(b) ? 'kopi' : 'roti';
+}
+
 function loadTopGallery(brand){
-  const key = (brand === 'kopi') ? 'topProductImages_kopi' : 'topProductImages_roti';
+  const b = normalizeGalleryBrand(brand);
+  const key = (b === 'kopi') ? 'topProductImages_kopi' : 'topProductImages_roti';
   const raw = getSiteAssetValue(key, localStorage.getItem(key) || '[]');
   try{ return JSON.parse(raw || '[]'); }catch(e){ return []; }
 }
 
 function saveTopGalleryArr(brand, arr){
-  const key = (brand === 'kopi') ? 'topProductImages_kopi' : 'topProductImages_roti';
+  const b = normalizeGalleryBrand(brand);
+  const key = (b === 'kopi') ? 'topProductImages_kopi' : 'topProductImages_roti';
   const payload = JSON.stringify(arr || []);
   try{ localStorage.setItem(key, payload); }catch(e){}
   try{ siteAssetsCache[key] = payload; }catch(e){}
