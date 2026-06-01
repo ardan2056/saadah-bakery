@@ -763,6 +763,23 @@ async function normalizeProductsCategories(){
 if(refreshProductsDebugBtn){ refreshProductsDebugBtn.addEventListener('click', ()=>{ renderProductsDebug(); alert('Produk debug diperbarui'); }); }
 if(normalizeProductsCategoriesBtn){ normalizeProductsCategoriesBtn.addEventListener('click', ()=>{ if(confirm('Normalize semua kategori produk lokal sekarang?')) normalizeProductsCategories(); }); }
 renderProductsDebug();
+// Auto-normalize categories once on load to fix common mistakes
+(async ()=>{
+  try{
+    const arr = loadAdminProducts();
+    if(Array.isArray(arr) && arr.length){
+      let need = false;
+      for(const p of arr){
+        const s = (p.category||'').toString().toLowerCase();
+        if(!['roti','kopi'].includes(s) || s.includes('minuman') || s.includes('coffee') || s.includes('makanan')){ need = true; break; }
+      }
+      if(need){
+        // run normalization silently
+        await normalizeProductsCategories();
+      }
+    }
+  }catch(e){}
+})();
 
 // Try local server upload if Supabase not configured
 async function uploadToLocalServer(blobFile){
