@@ -566,7 +566,8 @@ form.addEventListener('submit', async (e)=>{
   e.preventDefault();
   const name = pName.value.trim();
   const desc = pDesc.value.trim();
-  const category = pCategory.value;
+  // normalize category before saving (ensure 'roti' or 'kopi')
+  let category = mapCategoryValue(pCategory && pCategory.value ? pCategory.value : '');
   const price = Number(pPrice.value) || 0;
   let image = pImageUrl.value.trim();
 
