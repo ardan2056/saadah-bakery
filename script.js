@@ -309,7 +309,13 @@ function renderProducts() {
     const matchCategory = categoryMatchesFilter(item.category, canonicalFilter);
     // If user explicitly chose a category (not 'all'), respect that choice
     // and don't further limit results by the selected brand.
-    const matchBrand = (canonicalFilter && canonicalFilter !== 'all') ? true : brandMatches(item.category);
+    // Strict brand enforcement: also exclude items whose canonical category opposes the brand
+    const canon = canonicalCategory(item.category);
+    let matchBrand = (canonicalFilter && canonicalFilter !== 'all') ? true : brandMatches(item.category);
+    if(!canonicalFilter || canonicalFilter === 'all'){
+      if(selectedBrand === 'coffee' && canon === 'roti') matchBrand = false;
+      if(selectedBrand === 'bakery' && canon === 'kopi') matchBrand = false;
+    }
     return matchKeyword && matchCategory && matchBrand;
   });
 
