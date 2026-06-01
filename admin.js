@@ -1,9 +1,51 @@
 // Admin script with optional Supabase upload, preview, and edit support
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-import { SUPABASE_URL, SUPABASE_ANON_KEY, STORAGE_BUCKET } from './config.js';
 
-const supabaseConfigured = SUPABASE_URL && SUPABASE_URL.startsWith('http') && SUPABASE_ANON_KEY && !SUPABASE_ANON_KEY.includes('ISI_');
-const supabase = supabaseConfigured ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+// Load config dynamically to avoid cached/static import issues on Pages
+let SUPABASE_URL = '';
+let SUPABASE_ANON_KEY = '';
+let STORAGE_BUCKET = 'products';
+let supabase = null;
+
+async function loadConfigAndInit(){
+  // Try dynamic import of local config with a timestamp to bypass cache
+  try{
+    const mod = await import(`./config.js?ts=${Date.now()}`);
+    SUPABASE_URL = mod.SUPABASE_URL || '';
+    SUPABASE_ANON_KEY = mod.SUPABASE_ANON_KEY || '';
+    STORAGE_BUCKET = mod.STORAGE_BUCKET || STORAGE_BUCKET;
+  }catch(e){
+    // Fallback: fetch raw file from gh-pages branch (GitHub raw) and parse
+    try{
+      const url = `https://raw.githubusercontent.com/ardan2056/saadah-bakery/gh-pages/config.js?ts=${Date.now()}`;
+      const r = await fetch(url, {cache: 'no-store'});
+      if(r.ok){
+        const txt = await r.text();
+        const mUrl = txt.match(/SUPABASE_URL\s*=\s*"([^"]*)"/m);
+        const mKey = txt.match(/SUPABASE_ANON_KEY\s*=\s*"([^"]*)"/m);
+        const mBucket = txt.match(/STORAGE_BUCKET\s*=\s*"([^"]*)"/m);
+        SUPABASE_URL = mUrl ? mUrl[1] : '';
+        SUPABASE_ANON_KEY = mKey ? mKey[1] : '';
+        STORAGE_BUCKET = mBucket ? mBucket[1] : STORAGE_BUCKET;
+      }
+    }catch(_){ /* ignore */ }
+  }
+
+  const supabaseConfigured = SUPABASE_URL && SUPABASE_URL.startsWith('http') && SUPABASE_ANON_KEY && !SUPABASE_ANON_KEY.includes('ISI_');
+  if(supabaseConfigured){
+    supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // Attach auth state listener now that supabase exists
+    try{
+      supabase.auth.onAuthStateChange((_event, session)=>{
+        currentAdminUser = session?.user || null;
+        setAuthUI(!!session, currentAdminUser?.email || '');
+        if(session){
+          syncRemoteProductsToLocal().catch(()=>{});
+        }
+      });
+    }catch(_){ }
+  }
+}
 
 const form = document.getElementById('productForm');
 const pName = document.getElementById('pName');
@@ -154,15 +196,10 @@ adminLogoutBtn?.addEventListener('click', async ()=>{
   renderList();
 });
 
-if(supabase){
-  supabase.auth.onAuthStateChange((_event, session)=>{
-    currentAdminUser = session?.user || null;
-    setAuthUI(!!session, currentAdminUser?.email || '');
-    if(session){
-      syncRemoteProductsToLocal().catch(()=>{});
-    }
-  });
-}
+// Initialize config and Supabase, then refresh auth state
+loadConfigAndInit().then(()=>{
+  refreshAuthState().catch(()=>{});
+}).catch(()=>{});
 
 // Insert choose-menu prompt under the feature grid if not exists
 let prompt = document.getElementById('adminChoosePrompt');
