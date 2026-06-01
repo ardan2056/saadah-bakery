@@ -289,8 +289,63 @@ document.querySelectorAll('.admin-feature').forEach(card => {
   });
 });
 
+// Add quick-publish button to products tab header
+try{
+  const prodHeader = document.querySelector('#tab-products .admin-section-header') || document.querySelector('#tab-products');
+  if(prodHeader){
+    const btn = document.createElement('button');
+    btn.className = 'btn primary';
+    btn.style.marginLeft = '12px';
+    btn.id = 'publishLocalProductsBtn';
+    btn.textContent = 'Publish Local Products';
+    btn.addEventListener('click', ()=>{
+      if(confirm('Publish semua produk yang tersimpan lokal ke Supabase? (gambar akan diupload)')){
+        publishLocalProducts().catch(e=>alert('Publish gagal: '+(e&&e.message?e.message:e)));
+      }
+    });
+    prodHeader.insertBefore(btn, prodHeader.firstChild);
+  }
+}catch(e){ }
+
 function loadAdminProducts(){
   try{ return JSON.parse(localStorage.getItem('adminProducts') || '[]'); }catch(e){ return []; }
+}
+
+// Publish local adminProducts to Supabase: upload data-URL images, then insert products
+async function publishLocalProducts(){
+  if(!supabaseConfigured){ return alert('Supabase belum dikonfigurasi.'); }
+  if(!isAdminAuthenticated){ return alert('Login dulu supaya produk dapat dipublish ke Supabase.'); }
+  const list = loadAdminProducts();
+  if(!list || list.length === 0) return alert('Tidak ada produk lokal untuk dipublish.');
+  const results = [];
+  for(const item of list){
+    try{
+      // If image is a data URL, convert and upload
+      if(item.image_url && String(item.image_url).startsWith('data:')){
+        try{
+          const res = await fetch(item.image_url);
+          const blob = await res.blob();
+          const ext = blob.type && blob.type.split('/').pop() ? blob.type.split('/').pop() : 'jpg';
+          const file = new File([blob], `${Date.now()}.${ext}`, { type: blob.type || 'image/jpeg' });
+          const uploadedUrl = await uploadToSupabase(file);
+          if(uploadedUrl) item.image_url = uploadedUrl;
+        }catch(e){ console.warn('upload local dataurl failed', e); }
+      }
+
+      // Sync product to remote (inserts). Use null previousId so insert occurs.
+      const remote = await syncProductToRemote(item, null);
+      if(remote && remote.id){
+        // replace local id and update image_url with remote value
+        item.id = remote.id;
+        item.image_url = remote.image_url || item.image_url;
+      }
+      results.push({ok: true, id: item.id});
+    }catch(e){ results.push({ok:false, err:String(e)}); }
+  }
+  // Save back to localStorage with updated ids/urls
+  saveAdminProducts(list);
+  renderList();
+  alert('Publish selesai. Cek produk di Supabase dan muat ulang halaman publik.');
 }
 
 function saveAdminProducts(list){
