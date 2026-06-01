@@ -295,8 +295,20 @@ function renderProducts() {
   }
 
   function brandMatches(itemCategory){
-    if(selectedBrand === 'coffee') return categoryMatchesFilter(itemCategory, 'kopi');
-    if(selectedBrand === 'bakery') return categoryMatchesFilter(itemCategory, 'roti');
+    if(selectedBrand === 'coffee') {
+      // ensure strict: exclude anything that normalizes to 'roti'
+      if(!itemCategory) return false;
+      const cat = normalizeCat(itemCategory);
+      const isRoti = (['roti','makanan','food','bread','bakery'].includes(cat) || cat.indexOf('roti') === 0 || cat.includes('makanan'));
+      if(isRoti) return false;
+      return categoryMatchesFilter(itemCategory, 'kopi');
+    }
+    if(selectedBrand === 'bakery') {
+      const cat = normalizeCat(itemCategory);
+      const isKopi = (['kopi','minuman','drink','coffee','cafe'].includes(cat) || cat.indexOf('kopi') === 0 || cat.includes('minuman') || cat.includes('coffee'));
+      if(isKopi) return false;
+      return categoryMatchesFilter(itemCategory, 'roti');
+    }
     return true;
   }
 
@@ -344,14 +356,26 @@ function renderProducts() {
 function renderTopProductGallery(){
   if(!topProductGallery) return;
   const arr = loadTopProductImages(selectedBrand === 'coffee' ? 'kopi' : 'roti');
-  if(!arr || arr.length === 0){
+  // filter out gallery images that are actually product images of the opposite category
+  let filteredArr = arr || [];
+  try{
+    if(selectedBrand === 'coffee'){
+      const rotiImgs = new Set((products||[]).filter(p=>{ const c = (p.category||'').toString().toLowerCase(); return c && (c==='roti' || c.includes('roti') || c.includes('makanan') || c.includes('bread')); }).map(p=>p.image_url).filter(Boolean));
+      filteredArr = filteredArr.filter(u => !rotiImgs.has(u));
+    } else if(selectedBrand === 'bakery'){
+      const kopiImgs = new Set((products||[]).filter(p=>{ const c = (p.category||'').toString().toLowerCase(); return c && (c==='kopi' || c.includes('kopi') || c.includes('minuman') || c.includes('coffee')); }).map(p=>p.image_url).filter(Boolean));
+      filteredArr = filteredArr.filter(u => !kopiImgs.has(u));
+    }
+  }catch(e){ }
+
+  if(!filteredArr || filteredArr.length === 0){
     topProductGallery.innerHTML = '<div class="top-product-inner empty">Galeri produk kosong. Upload foto melalui admin nanti.</div>';
     return;
   }
   const html = `
     <div class="top-product-inner">
       <div class="gallery-row">
-        ${arr.map(url=>`<div class="top-product-item"><img src="${url}" alt="Foto produk" loading="lazy" decoding="async" onerror="this.style.display='none'"></div>`).join('')}
+        ${filteredArr.map(url=>`<div class="top-product-item"><img src="${url}" alt="Foto produk" loading="lazy" decoding="async" onerror="this.style.display='none'"></div>`).join('')}
       </div>
     </div>`;
   topProductGallery.innerHTML = html;
