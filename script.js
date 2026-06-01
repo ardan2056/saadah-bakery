@@ -837,6 +837,28 @@ function setAboutHeroImage(){
   aboutPhoto.textContent = '';
 }
 
+function setFounderPhoto(){
+  const founderEl = document.querySelector('.founder-photo');
+  if(!founderEl) return;
+  const url = getSiteAssetValue('founderPhoto');
+  if(!url){
+    founderEl.textContent = 'S';
+    founderEl.style.backgroundImage = '';
+    return;
+  }
+  // Use img tag inside founderEl for better layout
+  founderEl.innerHTML = '';
+  const img = document.createElement('img');
+  img.src = url;
+  img.alt = 'Ibu Saadah';
+  img.style.width = '100%';
+  img.style.height = '100%';
+  img.style.objectFit = 'cover';
+  founderEl.appendChild(img);
+}
+
+setFounderPhoto();
+
 setAboutHeroImage();
 
 // Set small 'Since' logo in hero visual if present
