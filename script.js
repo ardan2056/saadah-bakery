@@ -232,15 +232,7 @@ function normalizeProduct(item){
 }
 
 async function loadProducts() {
-  // Prioritas: adminProducts (localStorage) -> Supabase (jika dikonfigurasi) -> kosong
-  const adminProducts = loadAdminProductsFromStorage();
-  if (adminProducts && adminProducts.length) {
-    products = adminProducts.slice();
-    // normalisasi kategori agar filter publik mengenali variasi (coffee, minuman, dll.)
-    products = products.map(normalizeProduct);
-    renderProducts();
-    return;
-  }
+  // Prioritas: Supabase (jika dikonfigurasi and reachable) -> adminProducts (localStorage) -> kosong
   if (supabaseConfigured && supabase) {
     try {
       const { data, error } = await supabase
@@ -249,24 +241,22 @@ async function loadProducts() {
         .eq('is_active', true)
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Supabase error:', error);
-        products = [];
+      if (!error && data && data.length) {
+        products = data.map(normalizeProduct);
         renderProducts();
         return;
       }
-
-      products = (data && data.length) ? data : [];
-      // normalisasi kategori dari remote juga (jika ada variasi teks)
-      products = products.map(normalizeProduct);
-      renderProducts();
-      return;
     } catch (e) {
-      console.error('Load products failed', e);
-      products = [];
-      renderProducts();
-      return;
+      console.error('Load products from Supabase failed', e);
     }
+  }
+
+  // Fallback to localStorage if Supabase not available or returned no data
+  const adminProducts = loadAdminProductsFromStorage();
+  if (adminProducts && adminProducts.length) {
+    products = adminProducts.map(normalizeProduct);
+    renderProducts();
+    return;
   }
 
   // default: kosong (tunggu admin menambahkan produk)
