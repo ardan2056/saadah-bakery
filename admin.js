@@ -863,12 +863,29 @@ if(saveFounderBtn){
     let url = (founderUrlInput && founderUrlInput.value.trim()) || '';
     if(!url && founderFileInput && founderFileInput.files && founderFileInput.files[0]){
       let file = founderFileInput.files[0];
-      try{ const resized = await resizeImageFile(file, 800, 0.8); if(resized) file = resized; }catch(e){}
-      let uploaded = null;
-      if(supabaseConfigured) uploaded = await uploadToSupabase(file instanceof Blob ? new File([file], (founderFileInput.files[0]||{}).name || 'founder.jpg', {type: file.type || 'image/jpeg'}) : file);
-      if(!uploaded) uploaded = await uploadToLocalServer(file);
-      if(!uploaded) uploaded = await toDataURL(founderFileInput.files[0]);
-      url = uploaded;
+      // 1) create small thumbnail and upload first for fast public visibility
+      try{
+        const thumbBlob = await resizeImageFile(file, 420, 0.7);
+        let thumbUrl = null;
+        if(supabaseConfigured) thumbUrl = await uploadToSupabase(new File([thumbBlob], (founderFileInput.files[0]||{}).name ? `thumb_${founderFileInput.files[0].name}` : `founder_thumb.jpg`, {type: 'image/jpeg'}));
+        if(!thumbUrl) thumbUrl = await uploadToLocalServer(thumbBlob);
+        if(!thumbUrl) thumbUrl = await toDataURL(thumbBlob);
+        if(thumbUrl){
+          await saveSiteAssetValue('founderPhoto_thumb', thumbUrl);
+          try{ if(channel) channel.postMessage({type:'media-updated', key:'founderPhoto_thumb', url: thumbUrl}); }catch(e){}
+          if(founderPreviewEl){ founderPreviewEl.querySelector('img').src = thumbUrl; founderPreviewEl.style.display = 'block'; }
+        }
+
+        // 2) upload larger/full image in background and replace when ready
+        try{ const resized = await resizeImageFile(file, 1200, 0.82); if(resized) file = resized; }catch(e){}
+        let uploaded = null;
+        if(supabaseConfigured) uploaded = await uploadToSupabase(file instanceof Blob ? new File([file], (founderFileInput.files[0]||{}).name || 'founder.jpg', {type: file.type || 'image/jpeg'}) : file);
+        if(!uploaded) uploaded = await uploadToLocalServer(file);
+        if(!uploaded) uploaded = await toDataURL(founderFileInput.files[0]);
+        url = uploaded;
+      }catch(e){
+        console.warn('Founder upload flow failed', e);
+      }
     }
     if(!url) return alert('Pilih file atau masukkan URL untuk foto Ibu Saadah.');
     await saveSiteAssetValue('founderPhoto', url);

@@ -842,21 +842,26 @@ function setAboutHeroImage(){
 function setFounderPhoto(){
   const founderEl = document.querySelector('.founder-photo');
   if(!founderEl) return;
-  const url = getSiteAssetValue('founderPhoto');
-  if(!url){
-    founderEl.textContent = 'S';
-    founderEl.style.backgroundImage = '';
-    return;
-  }
+  const full = getSiteAssetValue('founderPhoto');
+  const thumb = getSiteAssetValue('founderPhoto_thumb');
+  const display = full || thumb;
+  if(!display){ founderEl.textContent = 'S'; founderEl.style.backgroundImage = ''; return; }
   // Use img tag inside founderEl for better layout
   founderEl.innerHTML = '';
   const img = document.createElement('img');
-  img.src = url;
+  img.src = display;
   img.alt = 'Ibu Saadah';
   img.style.width = '100%';
   img.style.height = '100%';
   img.style.objectFit = 'cover';
   founderEl.appendChild(img);
+  // If we are showing a thumb but full exists remotely, try to preload and swap
+  if(display === thumb && full && full !== thumb){
+    const fullImg = new Image();
+    fullImg.crossOrigin = 'anonymous';
+    fullImg.onload = ()=>{ img.src = full; };
+    fullImg.src = full;
+  }
 }
 
 setFounderPhoto();
