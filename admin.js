@@ -1071,6 +1071,7 @@ if(saveTopGalleryBtn){
     await configReady;
     if(!topGalleryFiles || !topGalleryFiles.files || topGalleryFiles.files.length===0) return alert('Pilih file terlebih dahulu.');
     const brand = topGalleryBrandSelect ? topGalleryBrandSelect.value : 'roti';
+    const normBrand = normalizeGalleryBrand(brand);
     const files = Array.from(topGalleryFiles.files);
     const saved = [];
     for(const f of files){
@@ -1083,12 +1084,13 @@ if(saveTopGalleryBtn){
       if(uploaded) saved.push(uploaded);
     }
     if(saved.length===0) return alert('Gagal mengunggah file apa pun.');
-    const arr = loadTopGallery(brand);
+    const arr = loadTopGallery(normBrand);
     const merged = arr.concat(saved);
-    saveTopGalleryArr(brand, merged);
-    try{ if(channel) channel.postMessage({type:'media-updated', key: (brand === 'kopi' ? 'topProductImages_kopi' : 'topProductImages_roti')}); }catch(e){}
+    saveTopGalleryArr(normBrand, merged);
+    const key = (normBrand === 'kopi') ? 'topProductImages_kopi' : 'topProductImages_roti';
+    try{ if(channel) channel.postMessage({type:'media-updated', key}); }catch(e){}
     renderTopGallery();
-    alert('Foto galeri berhasil ditambahkan.');
+    alert('Foto galeri berhasil ditambahkan ke ' + (normBrand === 'kopi' ? 'Minuman' : 'Roti') + ` (key: ${key})`);
     topGalleryFiles.value = '';
   });
 }
