@@ -29,6 +29,7 @@ const siteAssetsReady = loadSiteAssets().then(()=>{
     syncBrandMarkImage();
     setHeroBackground();
     setAboutHeroImage();
+    setFounderPhoto();
     setSinceLogoImage();
     syncAdminLogoImage();
     renderTopProductGallery();
@@ -117,6 +118,7 @@ if (bc) {
       try{
         if (ev.data.key === 'heroImage') setHeroBackground();
         if (ev.data.key === 'aboutHeroImage') setAboutHeroImage();
+        if (ev.data.key === 'founderPhoto') setFounderPhoto();
         if (ev.data.key === 'sinceLogoImage') setSinceLogoImage();
         if (ev.data.key === 'adminLogoImage' || ev.data.key === 'adminWelcomeImage') syncAdminLogoImage();
         if (ev.data.key && ev.data.key.startsWith('topProductImages')) renderTopProductGallery();
@@ -892,6 +894,7 @@ window.addEventListener('storage', (e)=>{
   if(!e.key) return;
   if(e.key === 'heroImage' || e.key.startsWith('topProductImages')) { setHeroBackground(); renderTopProductGallery(); }
   if(e.key === 'aboutHeroImage') setAboutHeroImage();
+  if (e.key === 'founderPhoto') setFounderPhoto();
   if(e.key === 'sinceLogoImage') setSinceLogoImage();
   if(e.key === 'adminWelcomeImage' || e.key === 'adminLogoImage') syncAdminLogoImage();
   if(e.key === 'adminProducts') loadProducts();
